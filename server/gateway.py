@@ -31,6 +31,60 @@ def _system_prompt() -> str:
     return (config.PROMPTS_DIR / "system.md").read_text()
 
 
+def _extract_payload(prompt: str) -> dict:
+    """Pull the INPUT_JSON object out of a prompt, ignoring anything after it.
+
+    The fixture provider needs the structured payload, and prompts are not
+    JSON — they are documents with a JSON block embedded in them, and other
+    sections (INVESTIGATION_RESULTS, CANDIDATE_FINDING) may follow it.
+    `json.loads` on everything after the marker therefore fails with
+    "Extra data", which is precisely what it did the first time a two-phase
+    prompt met the keyless path.
+
+    `raw_decode` reads exactly one JSON value and stops, so section order in
+    the prompt no longer matters.
+    """
+    if "INPUT_JSON:" not in prompt:
+        return {}
+    # rsplit, not split: prompt documents describe their own sections by name,
+    # so the marker occurs as prose before it occurs as a delimiter. Taking the
+    # first hit parses the documentation instead of the data — which is exactly
+    # what happened, and it failed silently into "no standards retrieved".
+    tail = prompt.rsplit("INPUT_JSON:", 1)[1].lstrip()
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(tail)
+        return obj if isinstance(obj, dict) else {}
+    except ValueError:
+        return {}
+
+
+def _standards_from_trace(prompt: str) -> list[dict]:
+    """Recover the standards the agent retrieved during phase 1.
+
+    Since ADR-009 the decide prompt no longer carries the standards corpus —
+    the agent has to go and retrieve it, which is what makes citations
+    checkable. The fixture provider therefore has to read them out of the
+    investigation trace, exactly as the live model does, rather than from a
+    payload key that deliberately no longer exists.
+    """
+    if "INVESTIGATION_RESULTS:" not in prompt:
+        return []
+    tail = prompt.rsplit("INVESTIGATION_RESULTS:", 1)[1].lstrip()
+    try:
+        trace, _ = json.JSONDecoder().raw_decode(tail)
+    except ValueError:
+        return []
+    seen, out = set(), []
+    for step in trace if isinstance(trace, list) else []:
+        if step.get("tool") != "search_standards":
+            continue
+        for m in (step.get("result") or {}).get("matches", []):
+            if m.get("code") and m["code"] not in seen:
+                seen.add(m["code"])
+                out.append(m)
+    return out
+
+
 def _estimate_cost(model: str, tin: int, tout: int) -> float:
     p = _PRICING.get(model, {"input_per_m": 0, "output_per_m": 0})
     return round(tin / 1e6 * p["input_per_m"] + tout / 1e6 * p["output_per_m"], 6)
@@ -274,7 +328,7 @@ class FixtureProvider:
         which tools to call is scripted.
         """
         start = time.time()
-        payload = json.loads(prompt.split("INPUT_JSON:", 1)[1]) if "INPUT_JSON:" in prompt else {}
+        payload = _extract_payload(prompt)
         trace: list[dict] = []
         step = 0
         for ob in payload.get("observations", [])[:3]:
@@ -312,8 +366,10 @@ class FixtureProvider:
     def generate(self, *, purpose: str, prompt: str, schema: Type[T],
                  tenant_id: str, audit_id: str | None) -> T:
         start = time.time()
-        payload = json.loads(prompt.split("INPUT_JSON:", 1)[1]) if "INPUT_JSON:" in prompt else {}
+        payload = _extract_payload(prompt)
         if schema is AnalysisResult:
+            # Standards come from what phase 1 retrieved, not from the payload.
+            payload = {**payload, "standards": _standards_from_trace(prompt)}
             result: BaseModel = self._analyse(payload)
         elif schema is ReviewThemes:
             result = self._themes(payload)
