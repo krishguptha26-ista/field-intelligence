@@ -123,6 +123,33 @@ contain the same words. The test failed the product exactly when it behaved well
 Everything mechanically checkable stayed deterministic Python; the judge is used
 only where the property is genuinely semantic, and it is told to fail closed.
 
+## 5. The bug the green test suite was hiding
+
+The eval suite was 16/16 across three repeats when I built the Docker image and
+ran it with **no secrets** — the keyless path the README promises. Every analyze
+call 500'd.
+
+Two bugs, and the second is the interesting one.
+
+`FixtureProvider` parsed everything after `INPUT_JSON:` as JSON. Once the
+two-phase agent landed, the decide prompt appends `INVESTIGATION_RESULTS:` after
+that block, so `json.loads` raised "Extra data". Easy fix — `raw_decode` reads
+exactly one JSON value and stops.
+
+Then it still failed, silently: every specific observation degraded to a
+clarifying question with no error at all. The cause was that **both markers
+appear twice in the decide prompt** — once as prose in `audit_analysis.md`,
+where I had helpfully documented the sections, and once as the actual delimiter.
+`split(marker, 1)[1]` was parsing my own documentation. The prompt's
+documentation collided with its data format.
+
+What makes this worth writing down is the failure mode, not the fix. The suite
+was green the entire time, because evals run against whichever provider is
+active and that is always live Gemini. Testing one provider had been silently
+standing in for testing the system. There are now two hard rules in `CLAUDE.md`:
+test both providers on any gateway or prompt change, and never let a prompt
+document name its own delimiter in prose.
+
 ## Rejected this session
 
 - **A Google Maps review scraper as a primary source.** Requested, and built —

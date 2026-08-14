@@ -44,6 +44,24 @@ append-only log entry.
    `python -m server.evals.runner` (server must be running). The bar is 16/16
    with zero flaky cases and the release gate clear. A regression blocks the
    change.
+9. **Test BOTH providers.** The eval suite runs against whichever provider is
+   active, which in practice means live Gemini — so it does not exercise the
+   keyless path at all. Anything touching prompt construction or `gateway.py`
+   must also be checked with no keys:
+
+   ```
+   docker build -t fieldintel:test . && docker run -p 8099:8000 fieldintel:test
+   ```
+
+   Expected keyless: vague note → clarification; specific note → finding citing
+   a standard; EV tenant → an EV standard; zero tracebacks. This is how the
+   INPUT_JSON delimiter bug was found, and live evals were green the whole time
+   it was broken.
+10. **Never let a prompt document name its own data delimiter in prose.** Both
+    `INPUT_JSON:` and `INVESTIGATION_RESULTS:` appear twice in the decide prompt
+    — once as documentation, once as the real marker. Parsing uses `rsplit` for
+    exactly this reason. If you add a section marker, do not describe it by name
+    in the prompt body.
 9. Keep prompts in `/prompts` — they are first-class source, versioned and
    reviewed like code. Record notable work in `docs/ai-development-log.md`.
 
