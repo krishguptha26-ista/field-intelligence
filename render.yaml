@@ -1,0 +1,56 @@
+# Render blueprint. Deploy: push this repo, then New → Blueprint on Render.
+#
+# Every secret is marked sync:false — Render prompts for the value once and
+# stores it in its own secret manager. No key, and no service-account JSON, ever
+# goes in this file or anywhere else in the repo.
+#
+# The app is designed to run with NONE of these set: it falls back to the
+# deterministic fixture engine and labels every screen accordingly. So a
+# secrets-free deploy is a legitimate deploy, not a broken one.
+
+services:
+  - type: web
+    name: fieldintel
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+
+      # Demo mode keeps verification outcomes labelled SIMULATED_OUTCOME.
+      - key: APP_DEMO_MODE
+        value: "true"
+
+      # --- Gemini: either an API key, or a Vertex service account ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_VERTEX_PROJECT
+        sync: false
+      - key: GEMINI_VERTEX_LOCATION
+        value: us-central1
+      # Paste the service-account JSON inline; config.py writes it to a 0600
+      # file under var/ at boot and never logs its contents.
+      - key: GEMINI_VERTEX_SA_JSON
+        sync: false
+
+      # --- Google Places (New). Must be enabled on the project AND present in
+      # the key's API restriction list — the legacy "Places API" is a different
+      # entry and does not grant access to the v1 endpoints.
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+
+      # Identifies the app to OpenStreetMap/Nominatim, whose usage policy
+      # requires a real User-Agent and contact.
+      - key: CONTACT_URL
+        sync: false
+
+      # The adversarial challenge panel: three extra calls per candidate finding.
+      - key: ENABLE_CHALLENGE_PANEL
+        value: "true"
+
+      # Public-web collection stays off. It needs a browser that is deliberately
+      # not in the runtime image, and enabling it is an operator's decision.
+      - key: ENABLE_SCRAPED_SIGNALS
+        value: "false"

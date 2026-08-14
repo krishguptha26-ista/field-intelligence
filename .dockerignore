@@ -1,0 +1,19 @@
+# Never let secrets or local state into a build context.
+.env
+.env.*
+!.env.example
+var/
+_internal/
+
+# Rebuilt inside the image.
+web/node_modules/
+web/dist/
+node_modules/
+
+__pycache__/
+**/__pycache__/
+*.pyc
+.git/
+.gitignore
+*.md
+!README.md

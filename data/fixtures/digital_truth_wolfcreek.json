@@ -1,0 +1,28 @@
+{
+  "location_id": "wolf-creek-atlanta",
+  "card_type": "OPPORTUNITY_DIGITAL_TRUTH",
+  "lane": "GROWTH_OPPORTUNITY",
+  "title": "Authoritative course facts conflict across owned channels",
+  "verified_at": "2026-08-13",
+  "provenance": "CACHED_LIVE_DATA",
+  "conflicts": [
+    {
+      "attribute": "Total yardage",
+      "values": [
+        {"value": "6,740 yards", "source": "Wolf Creek homepage", "url": "https://wolfcreekgc.com/", "fetched": "2026-08-13"},
+        {"value": "7,028 yards", "source": "Wolf Creek course information page", "url": "https://wolfcreekgc.com/course-information/", "fetched": "2026-08-13"}
+      ]
+    },
+    {
+      "attribute": "Green surface",
+      "values": [
+        {"value": "bent grass greens", "source": "Wolf Creek homepage", "url": "https://wolfcreekgc.com/", "fetched": "2026-08-13"},
+        {"value": "TifEagle", "source": "Wolf Creek course information page", "url": "https://wolfcreekgc.com/course-information/", "fetched": "2026-08-13"}
+      ]
+    }
+  ],
+  "agent_position": "The agent does not decide which value is correct from the web. This is routed as an opportunity, not a violation: confirm the current scorecard, yardage and green surface with the Director of Golf, then update the source of truth and downstream listings (booking engines, aggregators, AI answers).",
+  "why_it_matters": "Externally visible, cheap to fix, and directly affects customer trust, search results and booking expectations.",
+  "recommended_owner": "Director of Golf",
+  "status": "AWAITING_OPERATOR_CONFIRMATION"
+}

@@ -1,0 +1,17 @@
+# Runtime dependencies. Pinned to minor versions: this is a demo that has to work
+# on a specific day, and an unpinned transitive break on that day is unrecoverable.
+fastapi>=0.115,<0.117
+uvicorn[standard]>=0.30,<0.35
+sqlalchemy>=2.0,<2.1
+pydantic>=2.8,<3.0
+httpx>=0.27,<0.29
+python-dotenv>=1.0,<2.0
+python-multipart>=0.0.9,<0.1      # photo upload (multipart/form-data)
+google-genai>=1.0,<2.0            # Gemini, via API key or Vertex service account
+Pillow>=10.0,<12.0                # generates the eval suite's injection-sign fixture
+
+# NOT installed here, on purpose:
+#   playwright — only the optional scraped-signal connector needs it, it pulls a
+#   ~150MB browser, and that connector is off by default (ENABLE_SCRAPED_SIGNALS).
+#   Install locally with `pip install playwright && playwright install chromium`
+#   if you want to run collection. See ADR-010.

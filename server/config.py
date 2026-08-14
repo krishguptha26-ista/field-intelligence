@@ -1,0 +1,96 @@
+"""Central configuration. Reads .env; never logs secret values."""
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
+
+def _bool(name: str, default: bool) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes"}
+
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
+
+# --- Vertex AI route (alternative to GEMINI_API_KEY) ---
+# GEMINI_VERTEX_SA_JSON may be a filesystem path OR the service-account JSON inline.
+GEMINI_VERTEX_PROJECT = os.getenv("GEMINI_VERTEX_PROJECT", "")
+GEMINI_VERTEX_LOCATION = os.getenv("GEMINI_VERTEX_LOCATION", "us-central1")
+_SA_RAW = os.getenv("GEMINI_VERTEX_SA_JSON", "")
+
+
+def _materialise_sa() -> str | None:
+    """Make service-account credentials available to google-auth.
+
+    Accepts inline JSON (written to a 0600 file under var/) or an existing
+    path. Returns the credentials path or None. Never logs contents."""
+    if not _SA_RAW:
+        return None
+    if _SA_RAW.strip().startswith("{"):
+        path = Path(__file__).resolve().parent.parent / "var" / "gemini_sa.json"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(_SA_RAW)
+        path.chmod(0o600)
+    else:
+        path = Path(_SA_RAW).expanduser()
+        if not path.exists():
+            return None
+    os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", str(path))
+    return str(path)
+
+
+GEMINI_VERTEX_SA_PATH = _materialise_sa()
+GEMINI_CONFIGURED = bool(GEMINI_API_KEY or (GEMINI_VERTEX_PROJECT and GEMINI_VERTEX_SA_PATH))
+
+# Optional latency tuning: gemini-2.5-flash "thinks" by default (~8s avg observed).
+# Set LLM_THINKING_BUDGET=0 in .env to disable thinking for structured extraction
+# (faster + cheaper). Unset = SDK default behaviour (proven working).
+_tb = os.getenv("LLM_THINKING_BUDGET", "").strip()
+LLM_THINKING_BUDGET: int | None = int(_tb) if _tb.lstrip("-").isdigit() else None
+
+APP_VERSION = "0.2.0"
+# Identifies this app to OSM/Nominatim, whose usage policy requires a real
+# User-Agent and a contact. Override per deployment.
+CONTACT_URL = os.getenv("CONTACT_URL", "https://github.com/fieldintel-poc")
+
+# The adversarial challenge panel. On by default: it is the product's stated
+# personality made operational. Off is for latency-sensitive demos and for
+# measuring what the panel actually changes (see the eval harness).
+ENABLE_CHALLENGE_PANEL = _bool("ENABLE_CHALLENGE_PANEL", True)
+
+# Scraped public-web signals are OFF unless explicitly enabled. See ADR-010:
+# the capability exists, the default does not assume anyone's legal position.
+ENABLE_SCRAPED_SIGNALS = _bool("ENABLE_SCRAPED_SIGNALS", False)
+
+APP_ENV = os.getenv("APP_ENV", "development")
+APP_DEMO_MODE = _bool("APP_DEMO_MODE", True)
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{ROOT / 'var' / 'fieldintel.db'}")
+MAX_LLM_CALLS_PER_AUDIT = int(os.getenv("MAX_LLM_CALLS_PER_AUDIT", "25"))
+
+FIXTURES_DIR = ROOT / "data" / "fixtures"
+GOLDEN_DIR = ROOT / "data" / "golden"
+PROMPTS_DIR = ROOT / "prompts"
+VAR_DIR = ROOT / "var"
+VAR_DIR.mkdir(exist_ok=True)
+# Uploaded photos live under var/ (gitignored). Digest-addressed, so the image a
+# reviewer opens is provably the one the description was generated from.
+UPLOADS_DIR = VAR_DIR / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
+
+
+def key_status() -> dict:
+    """Report key EXISTENCE only — never values (spec §6)."""
+    return {
+        "gemini_key_present": bool(GEMINI_API_KEY),
+        "gemini_vertex_configured": bool(GEMINI_VERTEX_PROJECT and GEMINI_VERTEX_SA_PATH),
+        "gemini_configured": GEMINI_CONFIGURED,
+        "maps_key_present": bool(GOOGLE_MAPS_API_KEY),
+        "demo_mode": APP_DEMO_MODE,
+        "llm_provider": LLM_PROVIDER,
+        "llm_model": LLM_MODEL,
+    }

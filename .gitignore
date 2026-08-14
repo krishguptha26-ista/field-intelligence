@@ -1,0 +1,8 @@
+.env
+var/
+node_modules/
+web/dist/
+__pycache__/
+*.pyc
+nohup.out
+_internal/
