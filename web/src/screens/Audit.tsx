@@ -210,7 +210,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   const zoneObservations = observations.filter((observation: any) => observation.zone_id === zoneId);
   const zonePhotos = zoneObservations.filter((observation: any) =>
     observation.kind === "PHOTO_DESCRIPTION");
-  const zoneFindings = (audit?.findings ?? []).filter((finding: any) =>
+  const visibleFindings = (audit?.findings ?? []).filter((finding: any) =>
+    finding.status !== "REJECTED");
+  const zoneFindings = visibleFindings.filter((finding: any) =>
     (observationById.get(finding.observation_id) as any)?.zone_id === zoneId);
   const mappedTicketIds = new Set((audit?.findings ?? []).map((finding: any) => finding.ticket?.id).filter(Boolean));
   const zoneUnmappedTickets = (audit?.field_tickets ?? []).filter((ticket: any) =>
@@ -567,7 +569,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <div className="fi-review-stats">
         <div><b>{completeZones.length}/{requiredZones.length}</b><span>areas complete</span></div>
         <div><b>{completedChecks}/{totalChecks}</b><span>guide checks</span></div>
-        <div><b>{audit.findings.length}</b><span>candidate issues</span></div>
+        <div><b>{visibleFindings.length}</b><span>candidate issues</span></div>
         <div className={uniqueOpenQuestions.length ? "attention" : ""}><b>{uniqueOpenQuestions.length}</b><span>answers needed</span></div>
       </div>
 
