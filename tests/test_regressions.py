@@ -30,7 +30,8 @@ from PIL import Image  # noqa: E402
 
 from server.app import app  # noqa: E402
 from server.agent import challenge  # noqa: E402
-from server.models import ModelCall, Observation, SessionLocal, Standard, engine  # noqa: E402
+from server.models import (Finding, ModelCall, Observation, OperationalTicket,
+                           SessionLocal, Standard, engine, uid)  # noqa: E402
 from server.agent.orchestrator import _scope_representative_standard  # noqa: E402
 from server.gateway import GeminiProvider  # noqa: E402
 from server.schemas import (ActionDraft, AnalysisResult, FindingDraft,
@@ -303,6 +304,93 @@ class TrustBoundaryTests(unittest.TestCase):
         self.assertEqual(linked["status"], "OPEN")
         self.assertEqual(linked["validity_status"], "VALIDATED_BY_FINDING_REVIEW")
         self.assertIn(reviewed.json()["action_id"], linked["source_refs"])
+
+    def test_auto_reconciled_checklist_resubmission_cannot_duplicate_incident(self) -> None:
+        """Free report -> photo -> reconciliation -> zone save stays one incident."""
+        audit_id = self.new_audit()
+        guide = self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()["zones"]
+        arrival = next(zone for zone in guide
+                       if zone["name"] == "Arrival & entrance signage")
+        other_zone = next(zone for zone in guide
+                          if zone["id"] != arrival["id"] and zone["checks"])
+        observed = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE", "zone_id": arrival["id"],
+            "text": "Security is missing at the entrance.",
+        }).json()
+        self.client.post(f"/api/audits/{audit_id}/analyze")
+        question = next(q for q in self.client.get(
+            f"/api/audits/{audit_id}").json()["questions"] if q["status"] == "OPEN")
+        self.client.post(f"/api/questions/{question['id']}/answer", json={
+            "answer": "The scheduled security guard was absent; I do not mean equipment.",
+        })
+        photo_id = self.upload_photo(
+            audit_id, observation_id=observed["id"], zone_id=arrival["id"])
+        deferred = {"ran": False, "reason": "test defers panel to review",
+                    "challenges": [], "outcome": "DEFERRED_TO_REVIEW"}
+        with patch("server.agent.orchestrator.challenge.run_panel",
+                   return_value=deferred):
+            self.client.post(f"/api/audits/{audit_id}/analyze")
+        before = self.client.get(f"/api/audits/{audit_id}").json()
+        security = next(row for row in before["checklist_responses"]
+                        if row["standard_code"] == "SEC-01")
+        other = other_zone["checks"][0]
+
+        saved = self.client.post(f"/api/audits/{audit_id}/checklist", json={
+            "responses": [
+                {"item": security["item"], "standard_code": "SEC-01",
+                 "response": "FAIL", "detail": security["detail"],
+                 "zone_id": arrival["id"],
+                 "evidence_observation_ids": security["evidence_observation_ids"]},
+                {"item": other["question"],
+                 "standard_code": other["standard_code"], "response": "PASS",
+                 "detail": "Condition observed as acceptable during this visit.",
+                 "zone_id": other_zone["id"], "evidence_observation_ids": []},
+            ],
+        })
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.client.post(f"/api/audits/{audit_id}/analyze")
+        after = self.client.get(f"/api/audits/{audit_id}").json()
+        self.assertEqual(len(after["findings"]), 1, after)
+        self.assertEqual(len(after["field_tickets"]), 1, after)
+        self.assertFalse(any(
+            row["kind"] == "CHECKLIST"
+            and row["payload"].get("standard_code") == "SEC-01"
+            for row in after["observations"]), after)
+        saved_security = next(row for row in after["checklist_responses"]
+                              if row["standard_code"] == "SEC-01")
+        self.assertEqual(saved_security["originating_finding_id"],
+                         before["findings"][0]["id"])
+
+        # Service-level defence: even a legacy/forged duplicate checklist
+        # observation with the same standard and photo cannot create a packet.
+        db = SessionLocal()
+        try:
+            db.add(Observation(
+                id=uid("ob"), tenant_id="broadpeak-demo", audit_id=audit_id,
+                kind="CHECKLIST", zone_id=arrival["id"],
+                provenance="CONSULTANT_OBSERVATION",
+                text=("Checklist item failed: scheduled entrance security coverage — "
+                      "The scheduled security guard was absent."),
+                payload={"standard_code": "SEC-01", "response": "FAIL",
+                         "evidence_observation_ids": [photo_id]},
+            ))
+            db.commit()
+        finally:
+            db.close()
+        deduped = self.client.post(f"/api/audits/{audit_id}/analyze")
+        self.assertEqual(deduped.status_code, 200, deduped.text)
+        self.assertTrue(deduped.json().get("deduplicated_findings"), deduped.text)
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(Finding).filter_by(audit_id=audit_id).count(), 1)
+            self.assertEqual(db.query(OperationalTicket).filter(
+                OperationalTicket.source_kind == "PHOTO_BACKED_FIELD_FINDING",
+                OperationalTicket.location_id == "wolf-creek-atlanta",
+            ).filter(OperationalTicket.source_refs.contains(
+                before["findings"][0]["id"])).count(), 1)
+        finally:
+            db.close()
 
     def test_sqlite_capture_challenge_does_not_self_lock(self) -> None:
         """The panel ledger must not contend with the analysis transaction."""
@@ -985,20 +1073,93 @@ class TrustBoundaryTests(unittest.TestCase):
         Image.new("RGB", (24, 24), "green").save(buffer, format="PNG")
         evidence = self.client.post(
             f"/api/actions/{action_id}/evidence",
-            data={"actor": "Manager", "note": "Corrected sink area"},
+            data={"actor": "Facilities Manager", "note": "Corrected sink area"},
             files={"file": ("after.png", buffer.getvalue(), "image/png")},
         )
         self.assertEqual(evidence.status_code, 200, evidence.text)
+        self.assertEqual(evidence.json()["ticket_status"],
+                         "RESOLVED_PENDING_VERIFICATION")
+        capabilities = evidence.json()["verification_capabilities"]
+        self.assertTrue(capabilities["requires_independent_verifier"])
+        self.assertNotIn("Reviewer", capabilities["eligible_verifier_roles"])
+        self.assertIn("Brand Leader", capabilities["eligible_verifier_roles"])
+        self_verified = self.client.post(f"/api/actions/{action_id}/verify", json={
+            "evidence_description": "After photo reviewed; standing water removed.",
+            "verified_by": "Facilities Manager",
+        })
+        self.assertEqual(self_verified.status_code, 409, self_verified.text)
+        reviewer_verified = self.client.post(f"/api/actions/{action_id}/verify", json={
+            "evidence_description": "After photo reviewed; standing water removed.",
+            "verified_by": "Reviewer",
+        })
+        self.assertEqual(reviewer_verified.status_code, 409, reviewer_verified.text)
         verified = self.client.post(f"/api/actions/{action_id}/verify", json={
             "evidence_description": "After photo reviewed; standing water removed.",
-            "verified_by": "Manager",
+            "verified_by": "Brand Leader",
         })
         self.assertEqual(verified.status_code, 200, verified.text)
+        self.assertEqual(verified.json()["ticket_status"], "CLOSED_VERIFIED")
+        audit = self.client.get(f"/api/audits/{_audit_id}").json()
+        self.assertEqual(audit["actions"][0]["status"], "VERIFIED")
+        linked_ticket = audit["findings"][0]["ticket"]
+        self.assertEqual(linked_ticket["status"], "CLOSED_VERIFIED")
+        self.assertEqual(linked_ticket["after_evidence"][-1]["digest"],
+                         evidence.json()["image_sha256"])
         repeated_verify = self.client.post(f"/api/actions/{action_id}/verify", json={
             "evidence_description": "After photo reviewed; standing water removed.",
-            "verified_by": "Manager",
+            "verified_by": "Brand Leader",
         })
         self.assertTrue(repeated_verify.json()["idempotent"])
+
+        workflow = self.client.get("/api/workflow-capabilities")
+        self.assertEqual(workflow.status_code, 200, workflow.text)
+        self.assertTrue(workflow.json()["verification_policy"][
+            "requires_independent_verifier"])
+
+    def test_ticket_resolution_synchronizes_linked_action_and_evidence(self) -> None:
+        audit_id, finding_id = self.create_finding()
+        approved = self.client.post(f"/api/findings/{finding_id}/review", json={
+            "action": "approve", "reviewer": "Reviewer",
+            "reason": "Packet reviewed and accepted",
+        })
+        self.assertEqual(approved.status_code, 200, approved.text)
+        action_id = approved.json()["action_id"]
+        ticket_id = approved.json()["ticket_id"]
+        buffer = BytesIO()
+        Image.new("RGB", (24, 24), "green").save(buffer, format="PNG")
+        evidence = self.client.post(
+            f"/api/tickets/{ticket_id}/evidence",
+            data={"stage": "AFTER", "note": "Corrected condition",
+                  "actor": "Facilities Manager"},
+            files={"file": ("after.png", buffer.getvalue(), "image/png")},
+        )
+        self.assertEqual(evidence.status_code, 200, evidence.text)
+        after_upload = self.client.get(f"/api/audits/{audit_id}").json()
+        action = next(row for row in after_upload["actions"] if row["id"] == action_id)
+        self.assertTrue(any(
+            event.get("event") == "AFTER_EVIDENCE_UPLOADED"
+            and event.get("image_sha256") == evidence.json()["evidence"]["digest"]
+            for event in action["events"]))
+
+        resolved = self.client.post(f"/api/tickets/{ticket_id}/resolve", json={
+            "actor": "Facilities Manager", "resolution_note": "Correction completed",
+        })
+        self.assertEqual(resolved.status_code, 200, resolved.text)
+        mid = self.client.get(f"/api/audits/{audit_id}").json()
+        self.assertEqual(next(row for row in mid["actions"]
+                              if row["id"] == action_id)["status"],
+                         "COMPLETE_UNVERIFIED")
+        self_verify = self.client.post(f"/api/tickets/{ticket_id}/verify", json={
+            "actor": "Facilities Manager", "verification_note": "Self verification",
+        })
+        self.assertEqual(self_verify.status_code, 409, self_verify.text)
+        verified = self.client.post(f"/api/tickets/{ticket_id}/verify", json={
+            "actor": "Brand Leader", "verification_note": "Independent check completed",
+        })
+        self.assertEqual(verified.status_code, 200, verified.text)
+        final = self.client.get(f"/api/audits/{audit_id}").json()
+        self.assertEqual(next(row for row in final["actions"]
+                              if row["id"] == action_id)["status"], "VERIFIED")
 
     def test_unavailable_challenge_panel_fails_closed(self) -> None:
         class FailingProvider:
@@ -1112,6 +1273,12 @@ class TrustBoundaryTests(unittest.TestCase):
         self.assertTrue(all(0 <= r["days_ago"] <= 92 for r in sample["reviews"]))
         self.assertTrue(all(r["author"] == "Anonymous public reviewer"
                             for r in sample["reviews"]))
+        self.assertTrue(all((r.get("text") or "").strip() for r in sample["reviews"]))
+        self.assertEqual(sample["dataset_summary"]["recent_low_rating_written"],
+                         len(sample["reviews"]))
+        self.assertEqual(sample["dataset_summary"]["written"]
+                         + sample["dataset_summary"]["rating_only"],
+                         sample["dataset_summary"]["total"])
         self.assertNotIn("maximum five", response.json()["themes"]["sample_caveat"].lower())
 
     def test_customer_signal_ticket_requires_before_after_and_verification(self) -> None:

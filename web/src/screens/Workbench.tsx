@@ -86,6 +86,19 @@ function statusClass(status: string): string {
   return "amber";
 }
 
+function friendlyError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const jsonStart = raw.indexOf("{");
+  let detail = raw.replace(/^\d{3}:\s*/, "");
+  if (jsonStart >= 0) {
+    try { detail = JSON.parse(raw.slice(jsonStart)).detail || detail; } catch { /* plain response */ }
+  }
+  if (detail.toLowerCase().includes("after-photo")) {
+    return "A corrected-condition photo must be attached by the Location Operator before this action can be verified.";
+  }
+  return detail.replace(/^\{"detail":"?|"?\}]}?$/g, "") || "That action could not be completed. Refresh and try again.";
+}
+
 function makeDraft(finding: any, mode: DecisionMode): ReviewDraft {
   const action = finding.recommended_action ?? {};
   return {
@@ -130,7 +143,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
   const [busyFinding, setBusyFinding] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const canReview = ctx.role === "Reviewer" || ctx.role === "Brand Leader";
+  const canReview = ctx.role === "Reviewer";
 
   const refresh = async () => {
     if (ctx.auditId) setAudit(await api.getAudit(ctx.auditId));
@@ -140,7 +153,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
     setAudit(null);
     setDrafts({});
     setError("");
-    refresh().catch((err: Error) => setError(err.message));
+    refresh().catch((err: Error) => setError(friendlyError(err)));
   }, [ctx.auditId]);
 
   useEffect(() => {
@@ -203,7 +216,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
       closeDraft(finding.id);
       await refresh();
     } catch (err: any) {
-      setError(err.message);
+      setError(friendlyError(err));
     } finally {
       setBusyFinding(null);
     }
@@ -216,7 +229,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
       await api.challengeFinding(findingId, ctx.role as "Reviewer" | "Brand Leader");
       await refresh();
     } catch (err: any) {
-      setError(err.message);
+      setError(friendlyError(err));
     } finally {
       setBusyFinding(null);
     }
@@ -247,7 +260,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
       {!canReview && (
         <div className="reviewer-guard" role="note">
           <b>Independent decision required</b>
-          <span>The current persona ({ctx.role}) can inspect the packet but cannot decide a finding. Switch to Reviewer or Brand Leader. Production still requires SSO/RBAC.</span>
+          <span>The current persona ({ctx.role}) can inspect the packet but cannot decide a finding. Switch to Reviewer. Brand Leaders independently verify completed work; production still requires SSO/RBAC.</span>
         </div>
       )}
       {error && <div className="error-box" role="alert">{error}</div>}
@@ -425,7 +438,7 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
             )}
 
             {finding.status === "READY_FOR_REVIEW" && !canReview && (
-              <div className="decision-locked">Read-only packet · switch to Reviewer or Brand Leader to decide.</div>
+              <div className="decision-locked">Read-only packet · switch to Reviewer to decide.</div>
             )}
 
             {draft && (
@@ -508,42 +521,44 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
         <section className="approved-actions">
           <header><span className="reviewer-kicker">AFTER APPROVAL</span><h2>Corrective actions</h2></header>
           {audit.actions.map((action: any) => {
-            const hasAfterEvidence = action.events.some((event: any) => event.event === "AFTER_EVIDENCE_UPLOADED");
+            const finding = audit.findings.find((item: any) => item.id === action.finding_id);
+            const ticket = (audit.field_tickets || []).find((item: any) =>
+              (item.source_refs || []).includes(action.id) || (item.source_refs || []).includes(action.finding_id));
+            const actionAfterEvidence = action.events.filter((event: any) =>
+              event.event === "AFTER_EVIDENCE_UPLOADED" && event.image_sha256);
+            const ticketAfterEvidence = ticket?.after_evidence || [];
             return (
               <article className="action-card" key={action.id}>
                 <div className="action-card-head">
                   <div><b>{action.description}</b><span>{action.owner_role} · due {action.due_date}</span></div>
-                  <span className={`badge ${statusClass(action.status)}`}>{action.status}</span>
+                  <span className={`badge ${statusClass(action.status)}`}>{humanize(action.status)}</span>
                 </div>
                 <p>Verification required: {action.verification_method}</p>
-                {action.events.filter((event: any) => event.event === "AFTER_EVIDENCE_UPLOADED").map((event: any, eventIndex: number) => (
-                  <div className="action-evidence" key={eventIndex}>
-                    <img className="packet-media" src={`/api/photos/${event.image_sha256}`} alt="Uploaded after evidence" />
-                    <span>{event.note}</span>
-                  </div>
-                ))}
-                {action.status !== "VERIFIED" && (
-                  <div className="action-controls">
-                    <label>Upload corrected-condition photo
-                      <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busyFinding === action.id}
-                        onChange={async event => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          setBusyFinding(action.id); setError("");
-                          try { await api.uploadActionEvidence(action.id, file, "Corrected condition shown", ctx.role); await refresh(); }
-                          catch (err: any) { setError(err.message); }
-                          finally { setBusyFinding(null); event.target.value = ""; }
-                        }} />
-                    </label>
-                    <button className="primary" disabled={busyFinding === action.id || !hasAfterEvidence}
-                      onClick={async () => {
-                        setBusyFinding(action.id); setError("");
-                        try { await api.verifyAction(action.id, "Manager compared the uploaded after-photo with the original finding and confirmed the correction."); await refresh(); }
-                        catch (err: any) { setError(err.message); }
-                        finally { setBusyFinding(null); }
-                      }}>Verify correction</button>
-                  </div>
-                )}
+                <div className="action-case-chain" aria-label="Action case linkage">
+                  <span>Finding · {finding?.id || action.finding_id}</span><i>→</i><span>Action · {action.id}</span><i>→</i>
+                  <span>{ticket ? `Ticket · ${ticket.id}` : "Operational case pending"}</span>
+                </div>
+                {ticket ? <div className="linked-ticket-summary">
+                  <div><span>Assigned operator</span><b>{ticket.assigned_role}</b></div>
+                  <div><span>Operational status</span><b>{humanize(ticket.status)}</b></div>
+                  <div><span>Evidence inherited</span><b>{ticket.before_evidence?.length || 0} before · {ticket.after_evidence?.length || 0} after</b></div>
+                  <div><span>Canonical case</span><b>{ticket.id}</b></div>
+                </div> : <div className="action-handoff-note"><b>Corrective action approved</b><span>The operator case has not been linked yet. The review decision remains recorded; no completion is implied.</span></div>}
+                {(ticket?.before_evidence || []).map((row: any, eventIndex: number) => <div className="action-evidence inherited" key={`before-${eventIndex}`}>
+                  <img className="packet-media" src={`/api/photos/${row.digest}`} alt="Original evidence inherited from the field case" />
+                  <span><b>Original field evidence · reused</b>{row.note || "Before condition"}<small>{row.actor} · {row.provenance}</small></span>
+                </div>)}
+                {ticketAfterEvidence.map((row: any, eventIndex: number) => <div className="action-evidence" key={`ticket-after-${eventIndex}`}>
+                  <img className="packet-media" src={`/api/photos/${row.digest}`} alt="Corrected condition uploaded by the operator" />
+                  <span><b>Operator after evidence · linked from ticket</b>{row.note || "Corrected condition"}<small>{row.actor} · {row.provenance}</small></span>
+                </div>)}
+                {actionAfterEvidence.map((event: any, eventIndex: number) => <div className="action-evidence" key={`action-after-${eventIndex}`}>
+                  <img className="packet-media" src={`/api/photos/${event.image_sha256}`} alt="Corrected condition evidence" />
+                  <span><b>Corrected-condition evidence</b>{event.note}<small>{event.by} · {event.provenance}</small></span>
+                </div>)}
+                {action.status !== "VERIFIED" && <div className="action-handoff-note review-only">
+                  <b>Workflow handoff</b><span>The Location Operator validates and resolves the linked case. A Brand Leader then performs independent verification in the Verification queue. Reviewers cannot self-verify this action.</span>
+                </div>}
               </article>
             );
           })}

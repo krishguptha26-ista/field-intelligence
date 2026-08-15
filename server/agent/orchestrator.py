@@ -90,10 +90,31 @@ def _photo_ticket_evidence(observation: Observation) -> dict:
 def _create_field_ticket(db, audit: AuditSession, finding: Finding,
                          observation: Observation,
                          photo_observations: list[Observation]) -> OperationalTicket:
+    # The observation id is not a stable incident identity: the same free-form
+    # report can later be represented by a reconciled checklist observation.
+    # Standard + explicitly linked photos is stable across those representations
+    # and the database-unique dedupe key makes concurrent ticket creation fail
+    # closed instead of assigning the same work twice.
+    photo_ids = sorted({photo.id for photo in photo_observations})
+    standard_anchor = finding.standard_id or f"category:{finding.category}"
     dedupe_key = hashlib.sha256(
-        f"FIELD_FINDING|{audit.id}|{observation.id}".encode()).hexdigest()
+        f"FIELD_FINDING|{audit.id}|{standard_anchor}|{'|'.join(photo_ids)}".encode()
+    ).hexdigest()
     prior = db.query(OperationalTicket).filter_by(dedupe_key=dedupe_key).first()
     if prior is not None:
+        prior.source_refs = list(dict.fromkeys([
+            *(prior.source_refs or []), finding.id, observation.id, *photo_ids,
+        ]))
+        known_evidence = {
+            (row.get("observation_id"), row.get("digest"))
+            for row in (prior.before_evidence or [])
+        }
+        additions = [
+            _photo_ticket_evidence(photo) for photo in photo_observations
+            if (photo.id, (photo.payload or {}).get("image_sha256")) not in known_evidence
+        ]
+        if additions:
+            prior.before_evidence = [*(prior.before_evidence or []), *additions]
         return prior
     now = datetime.now(timezone.utc)
     priority = finding.severity if finding.severity in {"HIGH", "CRITICAL"} else "MEDIUM"
@@ -102,7 +123,7 @@ def _create_field_ticket(db, audit: AuditSession, finding: Finding,
         id=uid("ticket"), tenant_id=audit.tenant_id,
         location_id=audit.location_id, dedupe_key=dedupe_key,
         source_kind="PHOTO_BACKED_FIELD_FINDING",
-        source_refs=[finding.id, observation.id],
+        source_refs=[finding.id, observation.id, *photo_ids],
         category=finding.category, title=finding.title,
         description=(
             "Photo-backed field observation routed automatically for operator validation. "
@@ -123,6 +144,61 @@ def _create_field_ticket(db, audit: AuditSession, finding: Finding,
     )
     db.add(ticket)
     return ticket
+
+
+def _existing_incident_finding(db, audit: AuditSession, standard: Standard | None,
+                               photo_observations: list[Observation]) -> Finding | None:
+    """Return an existing packet for the same standard and explicit photo set.
+
+    Findings remain anchored to the immutable consultant observation.  That is
+    correct for provenance but it means observation id alone cannot deduplicate
+    a later checklist representation of the same incident.  Canonical photo
+    evidence plus the controlled standard is the narrowest safe equivalence:
+    separate photos remain separate incidents, while a resubmitted checklist
+    cannot manufacture a second packet from the exact same evidence.
+    """
+    if standard is None or not photo_observations:
+        return None
+    photo_observation_ids = {photo.id for photo in photo_observations}
+    photo_evidence_ids = {
+        evidence.id for evidence in db.query(EvidenceItem).filter_by(
+            tenant_id=audit.tenant_id, location_id=audit.location_id,
+        ).all()
+        if (evidence.payload or {}).get("observation_id") in photo_observation_ids
+        and evidence.source_type in {"PHOTO", "VIDEO"}
+    }
+    if not photo_evidence_ids:
+        return None
+    candidates = db.query(Finding).filter_by(
+        audit_id=audit.id, standard_id=standard.id,
+    ).order_by(Finding.created_at.asc()).all()
+    return next((finding for finding in candidates
+                 if photo_evidence_ids.intersection(finding.evidence_ids or [])), None)
+
+
+def _link_checklist_row_to_finding(audit: AuditSession, observation: Observation,
+                                   standard: Standard, finding: Finding,
+                                   photo_observations: list[Observation]) -> None:
+    """Make a suppressed duplicate visible in the checklist JSON record."""
+    photo_ids = {photo.id for photo in photo_observations}
+    rows = list(audit.checklist_responses or [])
+    changed = False
+    for index, row in enumerate(rows):
+        if (row.get("zone_id") != observation.zone_id
+                or row.get("standard_code") != standard.code):
+            continue
+        row_evidence = set(row.get("evidence_observation_ids") or [])
+        if photo_ids and not photo_ids.intersection(row_evidence):
+            continue
+        rows[index] = {
+            **row,
+            "finding_id": finding.id,
+            "canonical_incident_deduplicated": True,
+            "review_required": True,
+        }
+        changed = True
+    if changed:
+        audit.checklist_responses = rows
 
 
 def _reconcile_checklist_from_finding(db, audit: AuditSession, finding: Finding,
@@ -395,11 +471,21 @@ def analyze_audit(audit_id: str) -> dict:
         )
 
     observations = db.query(Observation).filter_by(audit_id=audit_id).all()
+    checklist_linked_media_ids = {
+        evidence_id
+        for observation in observations if observation.kind == "CHECKLIST"
+        for evidence_id in ((observation.payload or {}).get(
+            "evidence_observation_ids") or [])
+    }
     # Model-generated voice transcripts remain drafts until the consultant has
     # reviewed/edited them. Unconfirmed speech can never become a finding.
+    # A standalone photo becomes corroboration, not a competing model-authored
+    # incident, once the consultant explicitly links it to a checklist answer.
     observations = [o for o in observations
                     if not (o.payload or {}).get("awaiting_confirmation")
-                    and not (o.payload or {}).get("support_only")]
+                    and not (o.payload or {}).get("support_only")
+                    and not (o.kind in {"PHOTO_DESCRIPTION", "VIDEO_DESCRIPTION"}
+                             and o.id in checklist_linked_media_ids)]
     standards = db.query(Standard).filter_by(tenant_id=audit.tenant_id, active=True).all()
     questions = (db.query(ClarificationQuestion)
                    .filter_by(audit_id=audit_id)
@@ -420,9 +506,13 @@ def analyze_audit(audit_id: str) -> dict:
     # Re-analysis must never duplicate it (and we save the tokens too).
     settled = {f.observation_id for f in db.query(Finding).filter_by(audit_id=audit_id).all()
                if f.observation_id}
-    for log in db.query(AuditLog).filter_by(
-            entity_type="audit", entity_id=audit_id,
-            event="FIELD_CONCERN_ESCALATED").all():
+    for log in db.query(AuditLog).filter(
+            AuditLog.entity_type == "audit",
+            AuditLog.entity_id == audit_id,
+            AuditLog.event.in_({
+                "FIELD_CONCERN_ESCALATED",
+                "FINDING_CANONICAL_INCIDENT_DEDUPED",
+            })).all():
         observation_id = (log.detail or {}).get("observation_id")
         if observation_id:
             settled.add(observation_id)
@@ -612,6 +702,31 @@ def analyze_audit(audit_id: str) -> dict:
                     open_qs[ob.id] = q
                     created["clarifications"].append(q.id)
                     created.setdefault("evidence_requests", []).append(ob.id)
+                continue
+
+            existing_incident = _existing_incident_finding(
+                db, audit, std, supporting_photos)
+            if existing_incident is not None:
+                if std is not None and ob.kind == "CHECKLIST":
+                    _link_checklist_row_to_finding(
+                        audit, ob, std, existing_incident, supporting_photos)
+                db.add(AuditLog(
+                    id=uid("log"), tenant_id=audit.tenant_id, actor="SYSTEM",
+                    entity_type="audit", entity_id=audit.id,
+                    event="FINDING_CANONICAL_INCIDENT_DEDUPED",
+                    detail={
+                        "observation_id": ob.id,
+                        "canonical_finding_id": existing_incident.id,
+                        "standard_code": std.code if std else None,
+                        "photo_observation_ids": sorted(
+                            photo.id for photo in supporting_photos),
+                    },
+                ))
+                created.setdefault("deduplicated_findings", []).append({
+                    "observation_id": ob.id,
+                    "finding_id": existing_incident.id,
+                    "standard_code": std.code if std else None,
+                })
                 continue
 
             # Run the challenge before adding/flushing finding evidence below.

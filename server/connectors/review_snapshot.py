@@ -26,6 +26,8 @@ def load_review_snapshot(location_id: str, *, window_days: int = 92,
     now = datetime.now(timezone.utc)
     eligible: list[dict] = []
     recent_count = low_rating_count = rating_only_count = 0
+    snapshot_total = snapshot_written = 0
+    snapshot_histogram: dict[str, int] = {}
     seen: set[str] = set()
 
     for raw in blob.get("reviews", []):
@@ -41,13 +43,17 @@ def load_review_snapshot(location_id: str, *, window_days: int = 92,
             rating = int(raw["rating"])
         except (KeyError, TypeError, ValueError):
             continue
+        text = (raw.get("text") or "").strip()
+        snapshot_total += 1
+        snapshot_written += int(bool(text))
+        rating_key = str(rating)
+        snapshot_histogram[rating_key] = snapshot_histogram.get(rating_key, 0) + 1
         if days_ago < 0 or days_ago > window_days:
             continue
         recent_count += 1
         if rating > max_rating:
             continue
         low_rating_count += 1
-        text = (raw.get("text") or "").strip()
         if not text:
             rating_only_count += 1
             continue
@@ -75,6 +81,13 @@ def load_review_snapshot(location_id: str, *, window_days: int = 92,
         "collector": blob.get("collector"),
         "dataset_summary": {
             **(blob.get("summary") or {}),
+            # Recompute filter counts from the actual rows. A stale collector
+            # summary or a whitespace-only comment must never be presented as
+            # written evidence in the funnel.
+            "total": snapshot_total,
+            "written": snapshot_written,
+            "rating_only": snapshot_total - snapshot_written,
+            "rating_histogram": snapshot_histogram,
             "recent_all_ratings": recent_count,
             "recent_low_rating": low_rating_count,
             "recent_low_rating_written": len(eligible),

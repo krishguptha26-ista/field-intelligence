@@ -7,17 +7,36 @@ export default function Signals({ ctx }: { ctx: Ctx }) {
   const [data, setData] = useState<any>(null);
   const [sources, setSources] = useState<any>(null);
   const [err, setErr] = useState("");
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
 
   useEffect(() => {
-    setData(null); setSources(null); setErr("");
+    setData(null); setSources(null); setErr(""); setLoadingSeconds(0);
     api.signals(ctx.locationId).then(setData).catch(e => setErr(String(e)));
     // Loaded separately: the source panel is diagnostic, and a slow or failing
     // source must not hold up the page it is diagnosing.
     api.sources(ctx.locationId).then(setSources).catch(() => {});
   }, [ctx.locationId]);
 
+  useEffect(() => {
+    if (data || err) return;
+    const started = Date.now();
+    const timer = window.setInterval(
+      () => setLoadingSeconds(Math.floor((Date.now() - started) / 1000)), 1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [data, err, ctx.locationId]);
+
   if (err) return <div><h1>Customer signals</h1><div className="card">{err}</div></div>;
-  if (!data) return <div><h1>Customer signals</h1><div className="card">Loading…</div></div>;
+  if (!data) return <div>
+    <h1>Customer signals</h1>
+    <div className="card" role="status" aria-live="polite">
+      <b>Preparing review intelligence…</b>
+      <p>Checking the saved review snapshot, corroborating location sources, and grouping recurring themes. A first live analysis can take around 30 seconds.</p>
+      <div className="notice">{loadingSeconds < 10
+        ? "Starting the evidence pipeline…"
+        : `Still working — ${loadingSeconds}s elapsed. No review data has been lost.`}</div>
+    </div>
+  </div>;
 
   const { sample, themes } = data;
 

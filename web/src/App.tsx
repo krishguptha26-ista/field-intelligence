@@ -38,7 +38,7 @@ const ROLE_SCREENS: Record<string, ScreenId[]> = {
   "Field Consultant": ["audit"],
   Reviewer: ["workbench", "signals"],
   "Location Operator": ["resolution", "signals"],
-  "Brand Leader": ["portfolio", "signals", "benchmark"],
+  "Brand Leader": ["portfolio", "resolution", "signals", "benchmark"],
   "Technical Evaluator": [
     "audit", "workbench", "resolution", "portfolio", "signals", "benchmark", "console", "evals",
   ],
@@ -118,6 +118,9 @@ export default function App() {
     </>
   );
 
+  const screenLabel = (id: ScreenId) =>
+    id === "resolution" && role === "Brand Leader" ? "Verification queue" : SCREENS[id];
+
   return (
     <div className="app">
       <nav className="side" aria-label="Workspace navigation">
@@ -125,7 +128,7 @@ export default function App() {
         <div className="brand-sub">Walkthrough Copilot</div>
         {visibleScreens.map(id => (
           <button key={id} className={`navbtn ${screen === id ? "active" : ""}`}
-                  onClick={() => setScreen(id)}>{SCREENS[id]}</button>
+                  onClick={() => setScreen(id)}>{screenLabel(id)}</button>
         ))}
         <div className="spacer" />
         <button className="tour-launch" onClick={() => setTourOpen(true)}>How it works</button>
@@ -175,7 +178,7 @@ export default function App() {
       {visibleScreens.length > 1 && <nav className="mobile-nav" aria-label="Workspace navigation">
         {visibleScreens.map(id => (
           <button key={id} className={screen === id ? "active" : ""} onClick={() => setScreen(id)}>
-            {SCREENS[id]}
+            {screenLabel(id)}
           </button>
         ))}
       </nav>}

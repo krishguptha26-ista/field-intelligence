@@ -185,7 +185,18 @@ legitimate deploy rather than a broken one.
 uvicorn server.app:app --port 8000 &     # in one shell
 python -m server.evals.runner            # in another (3 repeats)
 python -m server.evals.runner --repeats 1  # fast smoke run
+# When the app is on a different port, name the exact system under test and
+# assert its provider before the evaluator creates any audits:
+python -m server.evals.runner --api-url http://127.0.0.1:8001/api --expect-provider fixture --repeats 1
 ```
+
+`EVAL_API_URL` and `EVAL_EXPECTED_PROVIDER` provide the same defaults for CI.
+Every artifact records the exact API URL and health response under
+`system_under_test`, separately from `judge_provider` (the model local to the
+evaluation process). The runner also compares the server's startup-time source
+fingerprint with the current checkout, so a stale listener cannot silently pass
+as the intended build. A missing health contract, build mismatch, or provider
+mismatch aborts the run before any case mutates the target.
 
 16 behavioural cases run against the live pipeline and render in the in-app
 **Eval Lab**. Two things make this different from a test suite:

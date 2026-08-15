@@ -5,8 +5,9 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import "../field.css";
 
 type CheckAnswer = { response: "PASS" | "FAIL" | "NOT_APPLICABLE"; detail: string };
-type CaptureState = "UPLOADING" | "ANALYZING" | "CONFIRM" | "FAILED";
-type PendingCapture = { id: string; label: string; state: CaptureState; detail?: string };
+type CaptureState = "UPLOADING" | "ANALYZING" | "CONFIRM" | "SAVED" | "FAILED";
+type PendingCapture = { id: string; label: string; state: CaptureState; detail?: string; zoneId?: string };
+type CaptureReceipt = { id: string; zoneId: string; title: string; detail: string };
 const hasUnresolvedPlaceholder = (value: string) => /\[[^\]]+\]|\{[^}]+\}|<[^>]+>/.test(value);
 type AuditBudget = {
   used_calls: number; limit_calls: number; remaining_calls: number;
@@ -31,13 +32,14 @@ function evidenceState(observation: any) {
 }
 
 function captureLabel(state: CaptureState) {
-  if (state === "UPLOADING") return "Sending securely";
-  if (state === "ANALYZING") return "Saved · structuring in background";
-  if (state === "CONFIRM") return "Needs your confirmation";
-  return "Needs attention";
+  if (state === "UPLOADING") return "Uploading to this visit — keep this page open until saved";
+  if (state === "ANALYZING") return "Evidence saved — AI is structuring it; this can take up to a minute";
+  if (state === "CONFIRM") return "Upload saved — confirm the transcript before analysis can continue";
+  if (state === "SAVED") return "Saved to this area";
+  return "Stopped — this item will not retry automatically";
 }
 
-export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => void }) {
+export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) => void }) {
   const [audit, setAudit] = useState<any>(null);
   const [guide, setGuide] = useState<any>(null);
   const [zoneId, setZoneId] = useState("");
@@ -50,7 +52,9 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const [privacyAttested, setPrivacyAttested] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState<any>(null);
   const [voiceText, setVoiceText] = useState("");
+  const [voiceReviewDeferred, setVoiceReviewDeferred] = useState(false);
   const [pending, setPending] = useState<PendingCapture[]>([]);
+  const [captureReceipts, setCaptureReceipts] = useState<CaptureReceipt[]>([]);
   const [deferredQuestionIds, setDeferredQuestionIds] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [guideSaving, setGuideSaving] = useState(false);
@@ -63,6 +67,7 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const [budgetBusy, setBudgetBusy] = useState(false);
   const [budgetNotice, setBudgetNotice] = useState("");
   const [caseTicket, setCaseTicket] = useState<any>(null);
+  const [showHandoffDetails, setShowHandoffDetails] = useState(false);
   const [error, setError] = useState("");
   const analysisQueue = useRef<Promise<unknown>>(Promise.resolve());
   const budgetRequestId = useRef<string | null>(null);
@@ -82,6 +87,17 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
     setReviewing(false);
     setSubmitted(false);
     setConfirmNew(false);
+    setText("");
+    setShowText(false);
+    setWrittenPhoto(false);
+    setVoiceDraft(null);
+    setVoiceText("");
+    setVoiceReviewDeferred(false);
+    setPending([]);
+    setCaptureReceipts([]);
+    setCaseTicket(null);
+    setShowHandoffDetails(false);
+    areaAdvanceLock.current = false;
     setBudgetGate(null);
     setBudgetNotice("");
     budgetRequestId.current = null;
@@ -102,11 +118,13 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   useEffect(() => {
     if (!caseTicket) return;
     caseReturnFocus.current = document.activeElement as HTMLElement | null;
+    const returnTarget = caseReturnFocus.current;
     const dialog = caseDialogRef.current;
     const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ) ?? [])];
-    window.requestAnimationFrame(() => focusable()[0]?.focus());
+    (focusable()[0] ?? dialog)?.focus();
+    const focusFrame = window.requestAnimationFrame(() => (focusable()[0] ?? dialog)?.focus());
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -129,8 +147,9 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", onKeyDown);
-      window.requestAnimationFrame(() => caseReturnFocus.current?.focus());
+      window.setTimeout(() => returnTarget?.focus(), 0);
     };
   }, [caseTicket]);
 
@@ -197,6 +216,10 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const zoneUnmappedTickets = (audit?.field_tickets ?? []).filter((ticket: any) =>
     !mappedTicketIds.has(ticket.id) && ticket.source_refs.some((ref: string) =>
       (observationById.get(ref) as any)?.zone_id === zoneId));
+  const workingCaptures = pending.filter(item => !["FAILED", "SAVED"].includes(item.state));
+  const savedCaptures = pending.filter(item => item.state === "SAVED");
+  const failedCaptures = pending.filter(item => item.state === "FAILED");
+  const currentReceipts = captureReceipts.filter(receipt => receipt.zoneId === zoneId);
 
   const updatePending = (id: string, update: Partial<PendingCapture>) =>
     setPending(items => items.map(item => item.id === id ? { ...item, ...update } : item));
@@ -229,7 +252,10 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
     setStarting(true); setError("");
     try {
       const created = await api.createAudit(ctx.tenantId, ctx.locationId, ctx.role);
-      setChecks({}); setEvidenceLinks({}); setVoiceDraft(null); setPending([]);
+      setChecks({}); setEvidenceLinks({}); setVoiceDraft(null); setVoiceText("");
+      setVoiceReviewDeferred(false); setPending([]); setCaptureReceipts([]);
+      setText(""); setShowText(false); setWrittenPhoto(false); setAnswers({});
+      setPrivacyAttested(false); setShowHandoffDetails(false);
       setBudgetGate(null);
       ctx.setAuditId(created.id);
     } catch (err: any) { setError(err.message); }
@@ -262,14 +288,23 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const queueTextCapture = (kind = writtenPhoto ? "WRITTEN_PHOTO_DESCRIPTION" : "NOTE", value = text) => {
     if (!ctx.auditId || !value.trim()) return;
     const id = `capture-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const captureZoneId = zoneId;
+    const captureZoneName = currentZone?.name ?? "this area";
+    const priorFindingIds = new Set((audit?.findings ?? []).map((finding: any) => finding.id));
     setSubmitted(false);
-    setPending(items => [...items, { id, label: kind === "NOTE" ? "Spoken or written observation" : "Written photo description", state: "UPLOADING" }]);
+    setPending(items => [...items, { id, zoneId: captureZoneId, label: kind === "NOTE" ? `Written observation · ${captureZoneName}` : `Written photo description · ${captureZoneName}`, state: "UPLOADING" }]);
     setText(""); setShowText(false); setError("");
     void (async () => {
       try {
-        await api.addObservation(ctx.auditId!, kind, value, zoneId || null);
+        const observation = await api.addObservation(ctx.auditId!, kind, value, captureZoneId || null);
         updatePending(id, { state: "ANALYZING" });
-        await queueAnalysis(ctx.auditId!);
+        const analysed: any = await queueAnalysis(ctx.auditId!);
+        const producedFinding = (analysed?.findings ?? []).some((finding: any) =>
+          !priorFindingIds.has(finding.id) && (!observation?.id || finding.observation_id === observation.id));
+        if (!producedFinding) setCaptureReceipts(receipts => [{
+          id, zoneId: captureZoneId, title: "Observation saved — no issue suggested",
+          detail: `Saved to ${captureZoneName}. It remains in the evidence record; no candidate issue or ticket was created from this note.`,
+        }, ...receipts.filter(receipt => receipt.id !== id)]);
         removePendingSoon(id);
       } catch (err: any) {
         updatePending(id, { state: "FAILED", detail: err.message });
@@ -281,13 +316,15 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
                       checkId: string | null = null, standardCode: string | null = null) => {
     if (!ctx.auditId) return;
     const id = `photo-${Date.now()}`;
+    const captureZoneId = zoneId;
+    const captureZoneName = currentZone?.name ?? "current area";
     setSubmitted(false);
-    setPending(items => [...items, { id, label: `Photo · ${currentZone?.name ?? "current area"}`, state: "UPLOADING" }]);
+    setPending(items => [...items, { id, zoneId: captureZoneId, label: `Photo · ${captureZoneName}`, state: "UPLOADING" }]);
     setError("");
     void (async () => {
       try {
         const result = await api.uploadPhoto(
-          ctx.auditId!, file, zoneId || null, privacyAttested,
+          ctx.auditId!, file, captureZoneId || null, privacyAttested,
           supportsObservationId, standardCode,
         );
         if (!result.accepted) {
@@ -300,6 +337,7 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
             ...previous,
             [checkId]: [...new Set([...(previous[checkId] ?? []), result.observation_id])],
           }));
+          updatePending(id, { state: "SAVED", detail: "Linked to the selected Issue check" });
           await refresh(ctx.auditId!);
         } else {
           updatePending(id, { state: "ANALYZING" });
@@ -313,23 +351,26 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const queueMedia = (mediaKind: "AUDIO" | "VIDEO", file: File) => {
     if (!ctx.auditId) return;
     const id = `${mediaKind.toLowerCase()}-${Date.now()}`;
+    const captureZoneId = zoneId;
+    const captureZoneName = currentZone?.name ?? "current area";
     setSubmitted(false);
     setPending(items => [...items, {
-      id, label: `${mediaKind === "AUDIO" ? "Voice note" : "Video"} · ${currentZone?.name ?? "current area"}`, state: "UPLOADING",
+      id, zoneId: captureZoneId, label: `${mediaKind === "AUDIO" ? "Voice note" : "Video"} · ${captureZoneName}`, state: "UPLOADING",
     }]);
     setError("");
     void (async () => {
       try {
         const standardCode = currentZone?.checks?.[0]?.standard_code ?? null;
-        const result = await api.uploadMedia(ctx.auditId!, mediaKind, file, zoneId || null, standardCode, privacyAttested);
+        const result = await api.uploadMedia(ctx.auditId!, mediaKind, file, captureZoneId || null, standardCode, privacyAttested);
         if (!result.accepted) {
           updatePending(id, { state: "FAILED", detail: result.reason });
           await refresh(ctx.auditId!);
           return;
         }
         if (mediaKind === "AUDIO") {
-          setVoiceDraft({ ...result, pending_id: id });
+          setVoiceDraft({ ...result, pending_id: id, zone_id: captureZoneId, zone_name: captureZoneName });
           setVoiceText(result.transcript || result.text || "");
+          setVoiceReviewDeferred(false);
           updatePending(id, { state: "CONFIRM" });
           await refresh(ctx.auditId!);
           return;
@@ -344,12 +385,22 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   const confirmVoice = async () => {
     if (!voiceDraft?.observation_id || !voiceText.trim() || !ctx.auditId) return;
     const pendingId = voiceDraft.pending_id;
+    const captureZoneId = voiceDraft.zone_id ?? zoneId;
+    const captureZoneName = voiceDraft.zone_name ?? currentZone?.name ?? "this area";
+    const observationId = voiceDraft.observation_id;
+    const priorFindingIds = new Set((audit?.findings ?? []).map((finding: any) => finding.id));
     updatePending(pendingId, { state: "ANALYZING" });
     setError("");
     try {
       await api.confirmObservation(voiceDraft.observation_id, voiceText);
-      setVoiceDraft(null); setVoiceText("");
-      await queueAnalysis(ctx.auditId);
+      setVoiceDraft(null); setVoiceText(""); setVoiceReviewDeferred(false);
+      const analysed: any = await queueAnalysis(ctx.auditId);
+      const producedFinding = (analysed?.findings ?? []).some((finding: any) =>
+        !priorFindingIds.has(finding.id) && finding.observation_id === observationId);
+      if (!producedFinding) setCaptureReceipts(receipts => [{
+        id: pendingId, zoneId: captureZoneId, title: "Voice note saved — no issue suggested",
+        detail: `Transcript confirmed and saved to ${captureZoneName}. No candidate issue or ticket was created from this note.`,
+      }, ...receipts.filter(receipt => receipt.id !== pendingId)]);
       removePendingSoon(pendingId);
     } catch (err: any) {
       updatePending(pendingId, { state: "FAILED", detail: err.message });
@@ -440,10 +491,17 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
       ? current.filter(id => id !== observationId) : [...current, observationId] };
   });
   const guardUnsavedDraft = () => {
-    if (!showText || !text.trim()) return false;
-    setError("Save or cancel this typed observation before leaving the area, so it cannot be filed in the wrong place.");
-    window.requestAnimationFrame(() => document.getElementById("field-note")?.focus());
-    return true;
+    if (showText && text.trim()) {
+      setError("Save or cancel this typed observation before leaving the area, so it cannot be filed in the wrong place.");
+      window.requestAnimationFrame(() => document.getElementById("field-note")?.focus());
+      return true;
+    }
+    if (voiceDraft && !voiceReviewDeferred && (voiceDraft.zone_id ?? zoneId) === zoneId) {
+      setError("Confirm this transcript or choose Review later before leaving the area. The voice note stays linked to this area.");
+      window.requestAnimationFrame(() => document.getElementById("voice-transcript")?.focus());
+      return true;
+    }
+    return false;
   };
   const changeArea = (nextId: string) => {
     if (!nextId || nextId === zoneId || guardUnsavedDraft()) return false;
@@ -463,6 +521,13 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
     const next = after ?? remainingZones.find((zone: any) => zone.id !== zoneId);
     if (next) changeArea(next.id);
     else setReviewing(true);
+  };
+  const resumeVoiceReview = () => {
+    if (!voiceDraft) return;
+    const targetZoneId = voiceDraft.zone_id ?? zoneId;
+    if (targetZoneId !== zoneId && !changeArea(targetZoneId)) return;
+    setVoiceReviewDeferred(false);
+    window.setTimeout(() => document.getElementById("voice-transcript")?.focus(), 0);
   };
 
   const submitVisit = async () => {
@@ -491,8 +556,7 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
   </div>;
 
   if (reviewing) {
-    const failedCaptures = pending.filter(item => item.state === "FAILED");
-    const activeCaptures = pending.filter(item => item.state !== "FAILED");
+    const activeCaptures = pending.filter(item => !["FAILED", "SAVED"].includes(item.state));
     const ready = !remainingZones.length && !openQuestions.length && !pending.length;
     return <div className="fi-shell fi-review">
       <button className="fi-back" onClick={() => { setReviewing(false); setSubmitted(false); }}>← Back to walkthrough</button>
@@ -509,8 +573,24 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
 
       {submitted ? <section className="fi-handoff">
         <div className="fi-handoff-mark">✓</div>
-        <div><h2>Independent review is next</h2><p>The evidence packet is ready. You can leave this visit without approving your own findings.</p>
-          <button className="fi-new-walkthrough" disabled={starting} onClick={start}>{starting ? "Preparing…" : "Start another walkthrough"}</button></div>
+        <div className="fi-handoff-body"><h2>Independent review is next</h2>
+          <p>The evidence packet is locked for handoff. Your field-consultant session cannot approve its own findings.</p>
+          <div className="fi-handoff-actions">
+            <button type="button" className="fi-handoff-explain" aria-expanded={showHandoffDetails}
+              onClick={() => setShowHandoffDetails(value => !value)}>
+              {showHandoffDetails ? "Hide handoff details" : "What happens next?"}
+            </button>
+            <button className="fi-new-walkthrough" disabled={starting} onClick={start}>{starting ? "Preparing…" : "Start another walkthrough"}</button>
+          </div>
+          {showHandoffDetails && <div className="fi-handoff-details" role="status">
+            <b>Handoff ID: {audit.id}</b>
+            <ol><li>A Reviewer opens this packet and makes the independent finding decision.</li>
+              <li>They compare the source, evidence and AI interpretation.</li>
+              <li>If approved, an operator completes the work and a Brand Leader independently verifies the resolution.</li></ol>
+            <p>For the full evidence layout, continue on desktop and switch to the appropriate preview persona. Production access must use authenticated, role-based permissions.</p>
+            {ctx.role === "Technical Evaluator" && <button type="button" onClick={() => goto("workbench")}>Preview reviewer queue as read-only evaluator</button>}
+          </div>}
+        </div>
       </section> : <>
         {remainingZones.length > 0 && <section className="fi-review-block">
           <h2>Areas still incomplete</h2>
@@ -534,6 +614,9 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
           <button type="button" onClick={() => setReviewing(false)}>Return to failed capture</button>
         </div>}
         {error && <div className="fi-error" role="alert">{error}</div>}
+        {finalizing && <div className="fi-submit-progress" role="status">
+          Saving final analysis and handing off the packet. Keep this visit open until confirmation appears.
+        </div>}
         <button className="fi-primary fi-submit" disabled={!ready || finalizing} onClick={submitVisit}>
           {finalizing ? "Preparing review packet…" : ready ? "Submit for independent review" : "Complete the items above to submit"}
         </button>
@@ -608,13 +691,21 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
           <button className="fi-primary" disabled={!text.trim()} onClick={() => queueTextCapture()}>Save observation</button></div>
       </div>}
 
-      {voiceDraft && <div className="fi-transcript">
+      {voiceDraft && !voiceReviewDeferred && (voiceDraft.zone_id ?? zoneId) === zoneId && <div className="fi-transcript">
         <span className="fi-kicker">CONFIRM WHAT I HEARD</span>
-        <textarea aria-label="Voice transcript" rows={4} value={voiceText} onChange={event => setVoiceText(event.target.value)} />
-        <div><button onClick={() => { setVoiceDraft(null); setVoiceText(""); }}>Review later</button>
+        <textarea id="voice-transcript" aria-label="Voice transcript" rows={4} value={voiceText} onChange={event => setVoiceText(event.target.value)} />
+        <small>The upload is saved to {voiceDraft.zone_name ?? "this area"}; analysis waits for your confirmation.</small>
+        <div><button onClick={() => setVoiceReviewDeferred(true)}>Review later</button>
           <button className="fi-primary" disabled={voiceText.trim().length < 3} onClick={confirmVoice}>Confirm and assess</button></div>
       </div>}
     </section>
+
+    {currentReceipts.map(receipt => <section className="fi-capture-receipt" role="status" key={receipt.id}>
+      <span className="fi-receipt-mark" aria-hidden="true">✓</span>
+      <div><b>{receipt.title}</b><span>{receipt.detail}</span></div>
+      <button type="button" aria-label={`Dismiss ${receipt.title}`} onClick={() =>
+        setCaptureReceipts(receipts => receipts.filter(candidate => candidate.id !== receipt.id))}>Dismiss</button>
+    </section>)}
 
     {budgetGate && <section className="fi-budget-gate" role="alert" data-tour="budget-control">
       <div className="fi-budget-icon">AI</div>
@@ -635,15 +726,18 @@ export default function Audit({ ctx }: { ctx: Ctx; goto: (screen: string) => voi
     {budgetNotice && !budgetGate && <div className="fi-budget-resumed" role="status">{budgetNotice}</div>}
 
     {pending.length > 0 && <section className="fi-processing" aria-live="polite">
-      <div className="fi-processing-head"><b>{pending.some(item => item.state !== "FAILED")
-        ? `${pending.filter(item => item.state !== "FAILED").length} capture(s) in progress`
-        : `${pending.length} capture${pending.length === 1 ? "" : "s"} need attention`}</b>
-        <span>{pending.some(item => item.state !== "FAILED")
-          ? "Keep walking — capture stays available."
+      <div className="fi-processing-head"><b>{workingCaptures.length
+        ? `${workingCaptures.length} capture${workingCaptures.length === 1 ? "" : "s"} in progress`
+        : savedCaptures.length ? `${savedCaptures.length} capture${savedCaptures.length === 1 ? "" : "s"} saved`
+        : `${failedCaptures.length} capture${failedCaptures.length === 1 ? "" : "s"} need attention`}</b>
+        <span>{workingCaptures.length
+          ? "You can keep capturing. Keep this visit open until each item says saved or needs attention."
+          : savedCaptures.length ? "The evidence is attached to this visit."
           : "Dismiss the failed item or try again with clearer evidence."}</span></div>
-      {pending.map(item => <div className={`fi-job ${item.state === "FAILED" ? "failed" : ""}`} key={item.id}>
+      {pending.map(item => <div className={`fi-job ${item.state === "FAILED" ? "failed" : item.state === "SAVED" ? "saved" : ""}`} key={item.id}>
         <span className="fi-job-dot" /><div><b>{item.label}</b><span>{captureLabel(item.state)}{item.detail ? ` · ${item.detail}` : ""}</span></div>
         {item.state === "FAILED" && <button onClick={() => setPending(items => items.filter(candidate => candidate.id !== item.id))}>Dismiss</button>}
+        {item.state === "CONFIRM" && voiceDraft?.pending_id === item.id && <button type="button" onClick={resumeVoiceReview}>Review transcript</button>}
       </div>)}
     </section>}
 

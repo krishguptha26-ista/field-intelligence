@@ -19,6 +19,7 @@ from sqlalchemy import func, text as sql_text
 
 from . import config
 from .budget import BUDGET_EVENT, ModelBudgetExceeded, audit_budget
+from .build_meta import source_fingerprint
 from .agent.orchestrator import (analyze_audit, answer_clarification,
                                  challenge_existing_finding, review_finding)
 from .connectors import sources
@@ -37,6 +38,61 @@ from .regulatory import (WOLF_CREEK_JURISDICTION, standard_metadata)
 app = FastAPI(title="Field Intelligence", version=config.APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
                    allow_methods=["*"], allow_headers=["*"])
+_BUILD_FINGERPRINT = source_fingerprint()
+
+
+_WORKFLOW_ROLE_CAPABILITIES = [
+    {"role": "Field Consultant", "capture_evidence": True,
+     "review_findings": False, "verify_resolution": False},
+    {"role": "Reviewer", "capture_evidence": False,
+     "review_findings": True, "verify_resolution": True},
+    {"role": "Brand Leader", "capture_evidence": False,
+     "review_findings": True, "verify_resolution": True},
+    {"role": "Operations Manager", "capture_evidence": True,
+     "review_findings": False, "verify_resolution": True},
+]
+_INDEPENDENT_VERIFIER_ROLES = tuple(
+    row["role"] for row in _WORKFLOW_ROLE_CAPABILITIES
+    if row["verify_resolution"]
+)
+_VERIFICATION_CONFLICT_EVENTS = {
+    "VALIDATED_ON_SITE", "FINDING_REVIEW_VALIDATED",
+    "RESOLUTION_SUBMITTED", "ACTION_RESOLUTION_SUBMITTED",
+    "AFTER_EVIDENCE_UPLOADED",
+}
+
+
+def _linked_ticket_for_action(db, action: Action) -> OperationalTicket | None:
+    return next((ticket for ticket in db.query(OperationalTicket).filter_by(
+        tenant_id=action.tenant_id).all()
+        if action.id in (ticket.source_refs or [])), None)
+
+
+def _linked_action_for_ticket(db, ticket: OperationalTicket) -> Action | None:
+    return next((db.get(Action, ref) for ref in (ticket.source_refs or [])
+                 if str(ref).startswith("act_")), None)
+
+
+def _verification_capabilities(*, ticket: OperationalTicket | None = None,
+                               action: Action | None = None) -> dict:
+    actors: dict[str, str] = {}
+    for event in [*(ticket.events if ticket else []), *(action.events if action else [])]:
+        if event.get("event") not in _VERIFICATION_CONFLICT_EVENTS:
+            continue
+        display = str(event.get("by") or "").strip()
+        if display:
+            actors.setdefault(display.casefold(), display)
+    eligible_roles = [role for role in _INDEPENDENT_VERIFIER_ROLES
+                      if role.casefold() not in actors]
+    return {
+        "requires_independent_verifier": True,
+        "excluded_actors": sorted(actors.values(), key=str.casefold),
+        "eligible_verifier_roles": eligible_roles,
+        "independent_verifier_available": bool(eligible_roles),
+        "identity_boundary": (
+            "POC display-role enforcement; production requires authenticated user identity"
+        ),
+    }
 
 
 @app.exception_handler(ModelBudgetExceeded)
@@ -54,7 +110,23 @@ def _startup() -> None:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, **config.key_status(), **provider_status()}
+    return {"ok": True, "build_fingerprint": _BUILD_FINGERPRINT,
+            **config.key_status(), **provider_status()}
+
+
+@app.get("/api/workflow-capabilities")
+def workflow_capabilities() -> dict:
+    """Expose POC role affordances without pretending they are authentication."""
+    return {
+        "roles": _WORKFLOW_ROLE_CAPABILITIES,
+        "verification_policy": {
+            "requires_independent_verifier": True,
+            "eligible_role_labels": list(_INDEPENDENT_VERIFIER_ROLES),
+            "identity_boundary": (
+                "Role labels drive the demo UI; production enforcement requires SSO/RBAC."
+            ),
+        },
+    }
 
 
 @app.get("/api/simulated")
@@ -520,7 +592,10 @@ def get_audit(audit_id: str) -> dict:
         "actions": [{"id": x.id, "finding_id": x.finding_id, "description": x.description,
                      "owner_role": x.owner_role, "due_date": x.due_date,
                      "verification_method": x.verification_method, "status": x.status,
-                     "events": x.events} for x in acts],
+                     "events": x.events,
+                     "verification_capabilities": _verification_capabilities(
+                         ticket=_linked_ticket_for_action(db, x), action=x,
+                     )} for x in acts],
     }
     db.close()
     return out
@@ -1079,6 +1154,7 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
         raise HTTPException(404)
     _ensure_audit_mutable(db, a)
     responses = [r.model_dump() for r in body.responses]
+    standards_by_code: dict[str, Standard] = {}
     for r in responses:
         zone = None
         if r.get("zone_id"):
@@ -1091,6 +1167,7 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
         if standard is None:
             db.close()
             raise HTTPException(422, "checklist standard does not belong to this audit tenant")
+        standards_by_code[standard.code] = standard
         if zone is not None and standard.code not in ZONE_CHECK_CODES.get(zone.name, []):
             db.close()
             raise HTTPException(
@@ -1146,6 +1223,25 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
             )
             row["contradicting_finding_id"] = conflict.get("finding_id")
             row["review_required"] = True
+        originating_finding_id = prior.get("finding_id") if prior.get(
+            "auto_reconciled") else None
+        originating_finding = db.get(Finding, originating_finding_id) \
+            if originating_finding_id else None
+        response_standard = standards_by_code[row["standard_code"]]
+        if (originating_finding is not None
+                and originating_finding.audit_id == audit_id
+                and (originating_finding.standard_id == response_standard.id)):
+            # Saving the rest of a zone often resubmits a server-generated
+            # checklist row.  The free-form observation already owns the
+            # finding and ticket; treating this representation as a brand-new
+            # failed checklist observation duplicates the same incident.
+            row["finding_id"] = originating_finding.id
+            row["originating_finding_id"] = originating_finding.id
+            row["review_required"] = True
+            row["conflict_resolution"] = (
+                "CONSULTANT_CONFIRMED_ISSUE" if row["response"] == "FAIL"
+                else "CONSULTANT_RETAINED_RESPONSE"
+            )
     merged_responses = dict(prior_responses)
     for row in responses:
         merged_responses[(row.get("zone_id"), row.get("standard_code"))] = row
@@ -1180,7 +1276,7 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
                     "this checklist issue already has a review packet; correct or retract it in review",
                 )
             continue
-        if r.get("contradicting_finding_id"):
+        if r.get("contradicting_finding_id") or r.get("originating_finding_id"):
             # The consultant explicitly resolved a system-raised conflict.
             # The originating free-form observation already owns the finding,
             # so do not manufacture a duplicate checklist observation.
@@ -1485,6 +1581,18 @@ async def add_action_evidence(action_id: str, file: UploadFile = File(...),
     if action is None:
         db.close()
         raise HTTPException(404, "action not found")
+    if action.status == "VERIFIED":
+        db.close()
+        raise HTTPException(409, "verified action cannot accept new evidence")
+    linked_ticket = _linked_ticket_for_action(db, action)
+    if linked_ticket is not None and not (
+            linked_ticket.status == "OPEN"
+            and linked_ticket.validity_status in {
+                "VALIDATED_ON_SITE", "VALIDATED_BY_FINDING_REVIEW",
+            }):
+        db.close()
+        raise HTTPException(
+            409, "linked ticket must be validated and open before after evidence is added")
     mime = (file.content_type or "").lower()
     if mime not in ALLOWED_IMAGE_TYPES:
         db.close()
@@ -1511,6 +1619,13 @@ async def add_action_evidence(action_id: str, file: UploadFile = File(...),
         db.close()
         raise HTTPException(415, "file contents are not a valid supported image")
     digest = hashlib.sha256(raw).hexdigest()
+    if linked_ticket is not None:
+        if digest in {row.get("digest") for row in (linked_ticket.before_evidence or [])}:
+            db.close()
+            raise HTTPException(409, "after evidence must differ from before evidence")
+        if digest in {row.get("digest") for row in (linked_ticket.after_evidence or [])}:
+            db.close()
+            raise HTTPException(409, "this image is already attached as after evidence")
     extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[mime]
     stored = config.UPLOADS_DIR / f"{digest}{extension}"
     if not stored.exists():
@@ -1519,12 +1634,34 @@ async def add_action_evidence(action_id: str, file: UploadFile = File(...),
              "by": actor, "note": note[:1000], "image_sha256": digest,
              "provenance": "STAFF_UPLOADED_PHOTO"}
     action.events = [*action.events, event]
+    action.status = "COMPLETE_UNVERIFIED"
+    if linked_ticket is not None:
+        ticket_evidence = {
+            "digest": digest, "mime": mime, "note": note[:1000],
+            "actor": actor, "at": event["at"],
+            "provenance": "STAFF_UPLOADED_PHOTO",
+            "action_id": action.id,
+        }
+        linked_ticket.after_evidence = [
+            *(linked_ticket.after_evidence or []), ticket_evidence,
+        ]
+        linked_ticket.status = "RESOLVED_PENDING_VERIFICATION"
+        linked_ticket.events = [*(linked_ticket.events or []), {
+            "at": event["at"], "event": "ACTION_RESOLUTION_SUBMITTED",
+            "by": actor, "note": note[:1000], "digest": digest,
+            "action_id": action.id,
+        }]
     db.add(AuditLog(id=uid("log"), tenant_id=action.tenant_id, actor=actor,
                     entity_type="action", entity_id=action.id,
                     event="AFTER_EVIDENCE_UPLOADED", detail=event))
     db.commit()
-    out = {"id": action.id, "image_sha256": digest,
-           "provenance": "STAFF_UPLOADED_PHOTO"}
+    out = {"id": action.id, "status": action.status,
+           "image_sha256": digest, "provenance": "STAFF_UPLOADED_PHOTO",
+           "ticket_id": linked_ticket.id if linked_ticket else None,
+           "ticket_status": linked_ticket.status if linked_ticket else None,
+           "verification_capabilities": _verification_capabilities(
+               ticket=linked_ticket, action=action),
+           }
     db.close()
     return out
 
@@ -1536,8 +1673,11 @@ def verify_action(action_id: str, body: VerifyBody) -> dict:
     if x is None:
         db.close()
         raise HTTPException(404)
-    if x.status == "VERIFIED":
-        out = {"id": x.id, "status": x.status, "idempotent": True}
+    linked_ticket = _linked_ticket_for_action(db, x)
+    if x.status == "VERIFIED" and (
+            linked_ticket is None or linked_ticket.status == "CLOSED_VERIFIED"):
+        out = {"id": x.id, "status": x.status, "idempotent": True,
+               "ticket_id": linked_ticket.id if linked_ticket else None}
         db.close()
         return out
     evidence = [event for event in x.events
@@ -1545,14 +1685,36 @@ def verify_action(action_id: str, body: VerifyBody) -> dict:
     if not evidence:
         db.close()
         raise HTTPException(409, "a real after-photo is required before verification")
+    if linked_ticket is not None and linked_ticket.status != "RESOLVED_PENDING_VERIFICATION":
+        db.close()
+        raise HTTPException(
+            409, "linked ticket resolution must be submitted before action verification")
+    capabilities = _verification_capabilities(ticket=linked_ticket, action=x)
+    verifier = body.verified_by.strip().casefold()
+    excluded = {actor.casefold() for actor in capabilities["excluded_actors"]}
+    if verifier in excluded:
+        db.close()
+        raise HTTPException(
+            409, "independent verification requires a different actor from review and resolution")
+    verified_at = datetime.now(timezone.utc)
     x.status = "VERIFIED"
-    x.events = [*x.events, {"at": datetime.now(timezone.utc).isoformat(),
+    x.events = [*x.events, {"at": verified_at.isoformat(),
                             "event": "VERIFIED", "by": body.verified_by,
                             "evidence": body.evidence_description,
                             "image_sha256": evidence[-1]["image_sha256"],
                             "provenance": "STAFF_UPLOADED_PHOTO"}]
+    if linked_ticket is not None:
+        linked_ticket.status = "CLOSED_VERIFIED"
+        linked_ticket.resolved_at = verified_at
+        linked_ticket.events = [*(linked_ticket.events or []), {
+            "at": verified_at.isoformat(), "event": "CLOSED_VERIFIED",
+            "by": body.verified_by, "note": body.evidence_description,
+            "digest": evidence[-1]["image_sha256"], "action_id": x.id,
+        }]
     db.commit()
-    out = {"id": x.id, "status": x.status}
+    out = {"id": x.id, "status": x.status,
+           "ticket_id": linked_ticket.id if linked_ticket else None,
+           "ticket_status": linked_ticket.status if linked_ticket else None}
     db.close()
     return out
 
@@ -1601,6 +1763,7 @@ def _ticket_dict(ticket: OperationalTicket) -> dict:
         "due_date": ticket.due_date, "before_evidence": ticket.before_evidence,
         "after_evidence": ticket.after_evidence,
         "external_reply": ticket.external_reply, "events": ticket.events,
+        "verification_capabilities": _verification_capabilities(ticket=ticket),
         "created_at": ticket.created_at.isoformat(),
         "updated_at": ticket.updated_at.isoformat(),
         "resolved_at": ticket.resolved_at.isoformat() if ticket.resolved_at else None,
@@ -1733,10 +1896,24 @@ async def add_ticket_evidence(ticket_id: str, stage: str = Form(...),
         ticket.before_evidence = [*ticket.before_evidence, evidence]
     else:
         ticket.after_evidence = [*ticket.after_evidence, evidence]
+        linked_action = _linked_action_for_ticket(db, ticket)
+        if linked_action is not None and digest not in {
+                event.get("image_sha256") for event in (linked_action.events or [])
+                if event.get("event") == "AFTER_EVIDENCE_UPLOADED"}:
+            linked_action.events = [*(linked_action.events or []), {
+                "at": at, "event": "AFTER_EVIDENCE_UPLOADED",
+                "by": actor.strip(), "note": note.strip(),
+                "image_sha256": digest,
+                "provenance": "STAFF_UPLOADED_PHOTO",
+                "ticket_id": ticket.id,
+            }]
     ticket.events = [*ticket.events, {"at": at, "event": f"{stage}_EVIDENCE_ADDED",
                                       "by": actor.strip(), "digest": digest}]
     db.commit()
-    out = {"ticket_id": ticket.id, "stage": stage, "evidence": evidence}
+    out = {"ticket_id": ticket.id, "stage": stage, "evidence": evidence,
+           "verification_capabilities": _verification_capabilities(
+               ticket=ticket, action=_linked_action_for_ticket(db, ticket)),
+           }
     db.close()
     return out
 
@@ -1783,8 +1960,7 @@ def resolve_ticket(ticket_id: str, body: TicketResolutionBody) -> dict:
     ticket.status = "RESOLVED_PENDING_VERIFICATION"
     ticket.events = [*ticket.events, {"at": at, "event": "RESOLUTION_SUBMITTED",
                                       "by": body.actor, "note": body.resolution_note}]
-    linked_action = next((db.get(Action, ref) for ref in (ticket.source_refs or [])
-                          if str(ref).startswith("act_")), None)
+    linked_action = _linked_action_for_ticket(db, ticket)
     if linked_action is not None:
         linked_action.status = "COMPLETE_UNVERIFIED"
         linked_action.events = [*linked_action.events, {
@@ -1812,13 +1988,10 @@ def verify_ticket(ticket_id: str, body: TicketVerificationBody) -> dict:
         db.close()
         raise HTTPException(409, "resolution must be submitted before verification")
     verifier = body.actor.strip().casefold()
+    linked_action = _linked_action_for_ticket(db, ticket)
     decision_actors = {
-        str(event.get("by") or "").strip().casefold()
-        for event in (ticket.events or [])
-        if event.get("event") in {
-            "VALIDATED_ON_SITE", "FINDING_REVIEW_VALIDATED",
-            "RESOLUTION_SUBMITTED",
-        }
+        actor.casefold() for actor in _verification_capabilities(
+            ticket=ticket, action=linked_action)["excluded_actors"]
     }
     if verifier in decision_actors:
         db.close()
@@ -1829,8 +2002,6 @@ def verify_ticket(ticket_id: str, body: TicketVerificationBody) -> dict:
     ticket.resolved_at = now
     ticket.events = [*ticket.events, {"at": now.isoformat(), "event": "CLOSED_VERIFIED",
                                       "by": body.actor, "note": body.verification_note}]
-    linked_action = next((db.get(Action, ref) for ref in (ticket.source_refs or [])
-                          if str(ref).startswith("act_")), None)
     if linked_action is not None:
         linked_action.status = "VERIFIED"
         linked_action.events = [*linked_action.events, {

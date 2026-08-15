@@ -114,6 +114,17 @@
 .fi-inline-check input { width: 17px; height: 17px; margin: 0; }
 .fi-entry-actions, .fi-transcript > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .fi-entry-actions > button:not(.fi-primary), .fi-transcript > div > button:not(.fi-primary) { min-height: 44px; border: 0; background: transparent; color: var(--fi-muted); }
+.fi-transcript > small { display: block; margin-top: 7px; color: var(--fi-muted); font-size: 11px; line-height: 1.45; }
+
+.fi-capture-receipt {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin: 11px 0; padding: 12px;
+  border: 1px solid #9fc4ad; border-radius: 13px; background: #eef8f1; color: #28543a;
+}
+.fi-receipt-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--fi-green); color: #fff; font-weight: 900; }
+.fi-capture-receipt > div { display: grid; gap: 3px; }
+.fi-capture-receipt b { font-size: 12px; }
+.fi-capture-receipt div span { color: #51705d; font-size: 11px; line-height: 1.45; }
+.fi-capture-receipt button { min-height: 44px; border: 0; background: transparent; color: #28543a; font-size: 11px; font-weight: 750; }
 
 .fi-processing { margin: 11px 0; padding: 12px; border: 1px solid #b9d3e7; border-radius: 13px; background: #f2f8fc; }
 .fi-processing-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
@@ -122,6 +133,7 @@
 .fi-job:first-of-type { border-top: 0; }
 .fi-job-dot { width: 9px; height: 9px; border: 2px solid var(--fi-blue); border-top-color: transparent; border-radius: 50%; animation: fi-spin .85s linear infinite; }
 .fi-job.failed .fi-job-dot { border: 0; background: var(--fi-red); animation: none; }
+.fi-job.saved .fi-job-dot { border: 0; background: var(--fi-green); animation: none; }
 .fi-job > div { display: grid; }
 .fi-job b { font-size: 12px; }
 .fi-job div span { color: var(--fi-muted); font-size: 11px; overflow-wrap: anywhere; }
@@ -290,11 +302,20 @@
 .fi-review-question span { color: var(--fi-gold-dark); font-size: 10px; font-weight: 800; }
 .fi-queue-note { margin: 12px 0; padding: 12px; border-radius: 10px; background: #eef7fc; color: var(--fi-blue); }
 .fi-submit { width: 100%; min-height: 56px; margin-top: 16px; }
+.fi-submit-progress { margin-top: 14px; border: 1px solid #b9d3e7; border-radius: 11px; padding: 11px 13px; background: #f2f8fc; color: var(--fi-blue); font-size: 12px; line-height: 1.45; }
 .fi-handoff { display: flex; gap: 15px; align-items: center; padding: 22px; border: 1px solid #83b99b; border-radius: 16px; background: #effaf4; }
 .fi-handoff-mark { display: grid; flex: 0 0 48px; height: 48px; place-items: center; border-radius: 50%; background: var(--fi-green); color: #fff; font-size: 25px; }
+.fi-handoff-body { min-width: 0; flex: 1; }
 .fi-handoff h2 { margin-bottom: 4px; }
 .fi-handoff p { margin: 0; color: var(--fi-muted); }
-.fi-new-walkthrough { min-height: 42px; margin-top: 12px; border: 1px solid #70a689; border-radius: 10px; background: #fff; color: var(--fi-green); font-weight: 750; }
+.fi-handoff-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fi-new-walkthrough, .fi-handoff-explain { min-height: 44px; border: 1px solid #70a689; border-radius: 10px; padding: 8px 12px; background: #fff; color: var(--fi-green); font-weight: 750; }
+.fi-handoff-explain { background: var(--fi-green); color: #fff; }
+.fi-handoff-details { margin-top: 13px; border-top: 1px solid #bdd9c8; padding-top: 12px; color: #28543a; }
+.fi-handoff-details > b { display: block; overflow-wrap: anywhere; font-size: 12px; }
+.fi-handoff-details ol { margin: 9px 0; padding-left: 20px; color: #456554; font-size: 12px; line-height: 1.55; }
+.fi-handoff-details p { font-size: 11px; line-height: 1.5; }
+.fi-handoff-details > button { min-height: 44px; margin-top: 10px; border: 1px solid #70a689; border-radius: 9px; padding: 8px 11px; background: #fff; color: var(--fi-green); font-weight: 750; }
 
 @media (max-width: 800px) {
   .main:has(.fi-shell) { padding: 0 !important; background: var(--fi-paper); }
@@ -322,4 +343,10 @@
   .fi-bottom-action .fi-primary { width: 100%; }
   .fi-review-stats > div { min-height: 80px; padding: 11px; }
   .fi-budget-gate { grid-template-columns: 1fr; }
+  .fi-capture-receipt { grid-template-columns: auto 1fr; }
+  .fi-capture-receipt > button { grid-column: 2; width: fit-content; padding-inline: 0; }
+  .fi-handoff { align-items: flex-start; padding: 16px; }
+  .fi-handoff-mark { width: 38px; flex-basis: 38px; height: 38px; font-size: 20px; }
+  .fi-handoff-actions { display: grid; }
+  .fi-handoff-actions > button { width: 100%; }
 }

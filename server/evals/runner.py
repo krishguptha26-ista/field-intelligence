@@ -24,6 +24,8 @@ plausible it reads.
 
 Usage:
     python -m server.evals.runner            # 3 repeats (default)
+    python -m server.evals.runner --api-url http://127.0.0.1:8001/api
+    python -m server.evals.runner --expect-provider fixture
     python -m server.evals.runner --repeats 5
     python -m server.evals.runner --repeats 1   # fast smoke run
 """
@@ -38,15 +40,86 @@ import statistics
 import subprocess
 import sys
 from datetime import datetime, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
 from .. import config
+from ..build_meta import source_fingerprint
 
-API = os.getenv("EVAL_API_URL", "http://127.0.0.1:8000/api").rstrip("/")
+DEFAULT_API_URL = os.getenv("EVAL_API_URL", "http://127.0.0.1:8000/api")
+API = DEFAULT_API_URL.rstrip("/")
 TENANT = "broadpeak-demo"
 LOCATION = "wolf-creek-atlanta"
 _RUN_AUDIT_IDS: set[str] = set()
+
+
+class EvaluationTargetError(RuntimeError):
+    """The configured HTTP target is unavailable or not the expected system."""
+
+
+def _normalise_api_url(value: str) -> str:
+    raw = (value or "").strip().rstrip("/")
+    parsed = urlsplit(raw)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise EvaluationTargetError(
+            "evaluation API URL must be an absolute http(s) URL")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise EvaluationTargetError(
+            "evaluation API URL must not contain credentials, query parameters or fragments")
+    path = parsed.path.rstrip("/")
+    if not path:
+        path = "/api"
+    if not path.endswith("/api"):
+        raise EvaluationTargetError(
+            "evaluation API URL must point to the API root and end with /api")
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+
+
+def _validate_system_under_test(client, api_url: str,
+                                expected_provider: str | None = None,
+                                expected_build: str | None = None) -> dict:
+    """Health-check and identify the exact HTTP system before mutating it."""
+    health_url = f"{api_url}/health"
+    try:
+        response = client.get(health_url)
+        response.raise_for_status()
+        health = response.json()
+    except Exception as exc:
+        raise EvaluationTargetError(
+            f"system under test health check failed at {health_url}: "
+            f"{type(exc).__name__}: {str(exc)[:180]}") from exc
+    if not isinstance(health, dict) or health.get("ok") is not True:
+        raise EvaluationTargetError(
+            f"{health_url} did not return the Field Intelligence health contract")
+    required = {"active_provider", "llm_provider", "llm_model", "build_fingerprint"}
+    missing = sorted(required - set(health))
+    if missing:
+        raise EvaluationTargetError(
+            f"{health_url} is missing required identity fields: {missing}")
+    active = str(health.get("active_provider") or "").strip().lower()
+    expected = (expected_provider or "").strip().lower()
+    if expected and active != expected:
+        raise EvaluationTargetError(
+            f"refusing to evaluate {api_url}: expected active provider "
+            f"{expected!r}, health reports {active!r}")
+    expected_build = (expected_build or "").strip().lower()
+    actual_build = str(health.get("build_fingerprint") or "").strip().lower()
+    if expected_build and actual_build != expected_build:
+        raise EvaluationTargetError(
+            f"refusing to evaluate stale or different server build at {api_url}: "
+            f"expected {expected_build!r}, health reports {actual_build!r}")
+    return {
+        "api_url": api_url,
+        "health_url": health_url,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "expected_provider": expected or None,
+        "active_provider": active,
+        "configured_provider": health.get("configured_provider") or health.get("llm_provider"),
+        "build_fingerprint": actual_build,
+        "expected_build_fingerprint": expected_build or None,
+        "health": health,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -412,17 +485,23 @@ CASES = [
 ]
 
 
-def run(repeats: int = 3, case_ids: set[str] | None = None) -> dict:
+def run(repeats: int = 3, case_ids: set[str] | None = None,
+        *, api_url: str | None = None,
+        expected_provider: str | None = None,
+        expected_build: str | None = None) -> dict:
     from ..gateway import provider_status
 
+    global API
+    API = _normalise_api_url(api_url or DEFAULT_API_URL)
+    expected_provider = (expected_provider if expected_provider is not None
+                         else os.getenv("EVAL_EXPECTED_PROVIDER", ""))
+    expected_build = (expected_build if expected_build is not None
+                      else os.getenv("EVAL_EXPECTED_BUILD") or source_fingerprint())
     _RUN_AUDIT_IDS.clear()
     results = []
     with httpx.Client(timeout=600) as client:
-        try:
-            target_provider = client.get(f"{API}/health").json()
-        except Exception as exc:
-            target_provider = {"active_provider": "unknown",
-                               "reason": f"target health unavailable: {type(exc).__name__}"}
+        system_under_test = _validate_system_under_test(
+            client, API, expected_provider, expected_build)
         selected_cases = [case for case in CASES if not case_ids or case[0] in case_ids]
         for cid, name, fn in selected_cases:
             runs = []
@@ -468,7 +547,11 @@ def run(repeats: int = 3, case_ids: set[str] | None = None) -> dict:
     out = {
         "ran": True, "at": datetime.now(timezone.utc).isoformat(),
         "repeats": repeats,
-        "provider": target_provider,
+        "api_url": API,
+        "system_under_test": system_under_test,
+        # Backward-compatible view for older Eval Lab clients. New consumers
+        # should use system_under_test and judge_provider explicitly.
+        "provider": system_under_test["health"],
         "judge_provider": provider_status(),
         "passed": passed, "total": len(results) - skipped, "skipped": skipped, "flaky": flaky,
         "mean_pass_rate": round(statistics.mean(rates), 3) if rates else 0.0,
@@ -491,13 +574,34 @@ if __name__ == "__main__":
                     help="runs per case; >1 surfaces non-determinism (default 3)")
     ap.add_argument("--case", action="append", dest="cases",
                     help="run only this case id (repeatable)")
+    ap.add_argument(
+        "--api-url", default=DEFAULT_API_URL,
+        help=("exact system-under-test API root (default: EVAL_API_URL or "
+              "http://127.0.0.1:8000/api)"),
+    )
+    ap.add_argument(
+        "--expect-provider", choices=("fixture", "gemini"),
+        default=os.getenv("EVAL_EXPECTED_PROVIDER") or None,
+        help=("fail before running any case unless SUT health reports this active "
+              "provider (or set EVAL_EXPECTED_PROVIDER)"),
+    )
     args = ap.parse_args()
 
-    r = run(args.repeats, set(args.cases) if args.cases else None)
+    try:
+        r = run(args.repeats, set(args.cases) if args.cases else None,
+                api_url=args.api_url, expected_provider=args.expect_provider)
+    except EvaluationTargetError as exc:
+        print(f"EVALUATION TARGET ERROR: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
     print(f"\n{r['passed']}/{r['total']} cases passed every run "
           f"({args.repeats} repeats each) | flaky: {r['flaky']} | "
           f"mean pass rate: {r['mean_pass_rate']}")
-    print(f"provider: {r['provider'].get('active_provider')} — {r['provider'].get('reason')}\n")
+    sut = r["system_under_test"]
+    print(f"system under test: {sut['api_url']}")
+    print(f"SUT provider: {sut['active_provider']} — "
+          f"{sut['health'].get('reason', 'health checked')}")
+    print(f"local judge provider: {r['judge_provider'].get('active_provider')} — "
+          f"{r['judge_provider'].get('reason', 'configured')}\n")
     for c in r["cases"]:
         mark = c["status"]
         print(f"{mark:<5} [{c['pass_rate']:.2f}] {c['name']}")

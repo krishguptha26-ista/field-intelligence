@@ -1,11 +1,27 @@
 const BASE = "";
 
+async function requestError(response: Response): Promise<Error> {
+  const fallback = `Request failed (${response.status})`;
+  try {
+    const raw = (await response.text()).trim();
+    if (!raw) return new Error(fallback);
+    try {
+      const payload = JSON.parse(raw);
+      return new Error(typeof payload?.detail === "string" ? payload.detail : fallback);
+    } catch {
+      return new Error(raw);
+    }
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  if (!r.ok) throw await requestError(r);
   return r.json();
 }
 
@@ -55,7 +71,7 @@ export const api = {
     const fd = new FormData();
     fd.append("file", file); fd.append("note", note); fd.append("actor", actor);
     const r = await fetch(`/api/actions/${aid}/evidence`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+    if (!r.ok) throw await requestError(r);
     return r.json();
   },
   sources: (loc: string) => j<any>(`/api/locations/${loc}/sources`),
@@ -91,7 +107,7 @@ export const api = {
     fd.append("stage", stage); fd.append("file", file);
     fd.append("note", note); fd.append("actor", actor);
     const r = await fetch(`/api/tickets/${id}/evidence`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+    if (!r.ok) throw await requestError(r);
     return r.json();
   },
   trace: (id: string) => j<any>(`/api/audits/${id}/trace`),
@@ -106,7 +122,7 @@ export const api = {
     if (evidence_for_standard_code) fd.append("evidence_for_standard_code", evidence_for_standard_code);
     fd.append("privacy_attested", String(privacy_attested));
     const r = await fetch(`/api/audits/${id}/photo`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+    if (!r.ok) throw await requestError(r);
     return r.json();
   },
   uploadMedia: async (id: string, media_kind: "AUDIO" | "VIDEO", file: File,
@@ -118,7 +134,7 @@ export const api = {
     if (standard_code) fd.append("standard_code", standard_code);
     fd.append("privacy_attested", String(privacy_attested));
     const r = await fetch(`/api/audits/${id}/media`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+    if (!r.ok) throw await requestError(r);
     return r.json();
   },
   console: () => j<any>("/api/console"),
