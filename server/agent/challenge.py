@@ -5,17 +5,21 @@ was enforced by one prompt and one policy layer, both of which sit on the same
 side of the argument as the model that produced the finding. This adds an
 opposing side.
 
-Three challengers with different briefs examine each candidate finding in
-parallel and independently. None of them sees the others' arguments, because
+Three challengers with different briefs examine each candidate finding
+independently (concurrently on Postgres; sequentially on the SQLite POC so cost
+ledger writes cannot lock each other). None sees the others' arguments, because
 challengers that can read each other converge, and three converged opinions are
 one opinion wearing a panel's clothing.
 
-Adjudication is deterministic Python, not a fourth model:
+Adjudication is deterministic Python, not a fourth model. Unavailable
+challengers fail closed instead of being silently counted as support:
 
+    2+ ABSTAIN             → inconclusive; the candidate becomes a clarification
     2+ OVERTURN            → the finding never reaches a human; it becomes a
                              clarifying question built from the challengers' own
                              "what would settle it" answers
-    1 OVERTURN or 2+ WEAKEN → survives, but downgraded: severity down one level,
+    1 ABSTAIN, 1 OVERTURN,
+    or 2+ WEAKEN           → survives, but downgraded: severity down one level,
                              confidence reduced, and every challenger's objection
                              recorded on the finding
     otherwise               → upheld, with the challenge record attached
@@ -84,15 +88,19 @@ def _brief(finding, observation_text: str, standard: dict | None) -> str:
 
 
 def run_panel(finding, *, observation_text: str, standard: dict | None,
-              tenant_id: str, audit_id: str | None) -> dict:
+              tenant_id: str, audit_id: str | None, force: bool = False) -> dict:
     """Run all three challengers concurrently and adjudicate deterministically."""
     if not config.ENABLE_CHALLENGE_PANEL:
         return {"ran": False, "reason": "challenge panel disabled by configuration",
                 "challenges": [], "outcome": "NOT_RUN"}
+    provider = get_provider()
+    if (not force and not config.CHALLENGE_PANEL_DURING_CAPTURE
+            and getattr(provider, "name", "") == "gemini"):
+        return {"ran": False, "reason": "deferred to independent review for field latency",
+                "challenges": [], "outcome": "DEFERRED_TO_REVIEW"}
 
     doc = (config.PROMPTS_DIR / "challenge_panel.md").read_text()
     brief = _brief(finding, observation_text, standard)
-    provider = get_provider()
 
     def one(lens_name: str, lens_brief: str) -> dict:
         prompt = (doc.replace("{LENS_BRIEF}", lens_brief)
@@ -111,16 +119,25 @@ def run_panel(finding, *, observation_text: str, standard: dict | None,
                     "argument": f"Challenger unavailable: {type(e).__name__}",
                     "specific_gap": "", "what_would_settle_it": ""}
 
-    with ThreadPoolExecutor(max_workers=len(LENSES)) as pool:
-        challenges = list(pool.map(lambda p: one(*p), LENSES))
+    # Each challenger records a ModelCall. SQLite serialises writes, so running
+    # those ledger writes concurrently can lock the POC database and make the
+    # safety feature itself an outage source. Production/Postgres keeps the
+    # lower-latency parallel path; the SQLite demo favours deterministic safety.
+    if config.DATABASE_URL.startswith("sqlite"):
+        challenges = [one(*lens) for lens in LENSES]
+    else:
+        with ThreadPoolExecutor(max_workers=len(LENSES)) as pool:
+            challenges = list(pool.map(lambda p: one(*p), LENSES))
 
     overturn = [c for c in challenges if c["verdict"] == "OVERTURN"]
     weaken = [c for c in challenges if c["verdict"] == "WEAKEN"]
     abstain = [c for c in challenges if c["verdict"] == "ABSTAIN"]
 
-    if len(overturn) >= 2:
+    if len(abstain) >= 2:
+        outcome = "INCONCLUSIVE"
+    elif len(overturn) >= 2:
         outcome = "OVERTURNED"
-    elif overturn or len(weaken) >= 2:
+    elif abstain or overturn or len(weaken) >= 2:
         outcome = "DOWNGRADED"
     else:
         outcome = "UPHELD"

@@ -14,7 +14,7 @@ Design notes:
 You are analysing one field-audit visit. Inputs below include:
 - checklist responses (structured),
 - consultant free-text notes and photo descriptions (each with an observation id),
-- prior clarification answers, if any,
+- the complete ordered clarification history, if any (never discard an earlier answer),
 - INVESTIGATION_RESULTS: the tool calls made in phase 1 and what they returned,
   including any standards retrieved and any prior findings at this location.
 
@@ -46,6 +46,9 @@ For EACH observation decide exactly one of:
 3. NO_ISSUE — the observation is positive/neutral; record it as such.
 
 Hard rules:
+- Treat the full clarification history as cumulative evidence. Never ask for a
+  fact the consultant already supplied in an earlier answer, and never repeat a
+  semantically equivalent question.
 - Never cite a standard code that was not returned by a search_standards call in
   INVESTIGATION_RESULTS. Ungrounded citations are detected and the finding is
   demoted to a clarifying question, so guessing costs you the finding.

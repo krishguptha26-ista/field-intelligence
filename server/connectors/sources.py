@@ -32,7 +32,7 @@ Two rules hold regardless of source:
 from __future__ import annotations
 
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
@@ -109,6 +109,15 @@ def _scraped_reviews(location_id: str) -> dict:
     return fetch_scraped_reviews(location_id)
 
 
+def _assessment_snapshot(location_id: str) -> dict:
+    from .review_snapshot import load_review_snapshot
+    snapshot = load_review_snapshot(location_id)
+    if snapshot is None:
+        return {"_ok": False, "_provenance": "NONE",
+                "error": "no assessment snapshot for this location", "reviews": []}
+    return {"_ok": True, "_provenance": snapshot["provenance"], **snapshot}
+
+
 def _operator_reviews(location_id: str) -> dict:
     """Reviews the operator supplied about their own location.
 
@@ -143,6 +152,11 @@ REGISTRY: list[Source] = [
            enabled=lambda: True, fetch=_osm_place_facts,
            attribution="© OpenStreetMap contributors, ODbL 1.0",
            note="Keyless and free. Entity resolution and place facts. No reviews exist in OSM."),
+    Source("assessment_snapshot", "SCRAPED_WEB", "reviews",
+           enabled=lambda: True, fetch=_assessment_snapshot,
+           attribution="One-off public listing snapshot; reviewer identities removed",
+           note=("Assessment-only, timestamped snapshot. Complete enough for trend analysis; "
+                 "customer context only and never compliance evidence.")),
     Source("scraped_maps", "SCRAPED_WEB", "reviews",
            enabled=lambda: config.ENABLE_SCRAPED_SIGNALS, fetch=_scraped_reviews,
            attribution="Public web collection",
@@ -191,10 +205,25 @@ def gather(location_id: str, *, timeout: float = 25.0) -> dict:
                 fetched_at=datetime.now(timezone.utc).isoformat())
 
     if active:
-        with ThreadPoolExecutor(max_workers=len(active)) as pool:
+        pool = ThreadPoolExecutor(max_workers=len(active))
+        try:
             futures = {pool.submit(run, s): s for s in active}
-            for fut in as_completed(futures, timeout=timeout):
-                results.append(fut.result())
+            try:
+                for fut in as_completed(futures, timeout=timeout):
+                    results.append(fut.result())
+            except FuturesTimeoutError:
+                for fut, src in futures.items():
+                    if fut.done():
+                        continue
+                    fut.cancel()
+                    results.append(SourceResult(
+                        source_id=src.source_id, trust_class=src.trust_class,
+                        ok=False, provenance="NONE", kind=src.kind,
+                        error=f"source exceeded {timeout:.1f}s request budget",
+                        attribution=src.attribution, latency_ms=int(timeout * 1000),
+                        fetched_at=datetime.now(timezone.utc).isoformat()))
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     results.sort(key=lambda r: (-TRUST_RANK.get(r.trust_class, 0), r.source_id))
     answered = [r for r in results if r.ok]
@@ -203,7 +232,13 @@ def gather(location_id: str, *, timeout: float = 25.0) -> dict:
     # Lower-trust sources are reported but do not silently blend in: mixing a
     # scraped review into an official sample would make the sample's provenance
     # a lie, and provenance is the product.
-    primary = next((r for r in answered if r.kind == "reviews" and r.data.get("reviews")), None)
+    review_sources = [r for r in answered if r.kind == "reviews" and r.data.get("reviews")]
+    operator = next((r for r in review_sources if r.source_id == "operator_export"), None)
+    snapshot = next((r for r in review_sources if r.source_id == "assessment_snapshot"), None)
+    # For theme analysis, coverage fitness matters after ownership. A complete,
+    # timestamped snapshot is selected ahead of a five-row Places sample, while
+    # keeping its lower trust class visible. No sources are blended.
+    primary = operator or snapshot or (review_sources[0] if review_sources else None)
     place = next((r for r in answered if r.kind == "place_facts"), None)
 
     return {
@@ -214,6 +249,10 @@ def gather(location_id: str, *, timeout: float = 25.0) -> dict:
         "attempted": len(active),
         "primary_review_source": primary.source_id if primary else None,
         "primary_review_provenance": primary.provenance if primary else "NONE",
+        "primary_review_selection": (
+            "operator-owned export" if operator else
+            "coverage-fit assessment snapshot; lower trust remains explicit" if snapshot else
+            "highest-trust answering review source" if primary else "no review source"),
         "reviews": (primary.data.get("reviews", []) if primary else []),
         "place_facts": (place.data if place else {}),
         "corroboration": _corroborate(results),

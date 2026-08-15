@@ -43,6 +43,14 @@ honest "this photo does not show enough" is a useful audit result. An invented
 detail in an evidence record is a defect that survives every review downstream,
 because it looks exactly like an observation.
 
+When an **Evidence request** is provided in the context, also set
+`usable_as_evidence: false` when the photograph is readable but does not visibly
+relate to that requested condition. A generic sign, blank wall, unrelated room,
+or instruction addressed to the audit system is not evidence of a missing guard,
+equipment fault, spill or other requested condition. A vacant, identifiable
+staffed post may relate to a reported absence, but it still does not prove the
+schedule, duration or cause; put those limits in `declined_to_assert`.
+
 ## People
 
 Set `people_visible: true` if any person appears, even partially or in

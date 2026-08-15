@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, timedelta, timezone
+from threading import Lock
 
 import httpx
 
@@ -17,6 +18,7 @@ from .. import config
 from ..gateway import get_provider
 from ..models import ExternalSignal, Location, SessionLocal, Standard, uid
 from ..schemas import ReviewThemes
+from .review_snapshot import load_review_snapshot
 
 SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
@@ -130,9 +132,25 @@ def fetch_review_sample(location_id: str) -> dict:
             "window_days": 92, "location_meta": (location.meta if location else {})}
 
 
-def summarise_themes(location_id: str, tenant_id: str) -> dict:
-    """LLM theme summary over the (small) sample — context, never proof."""
-    sample = fetch_review_sample(location_id)
+def _summarise_themes_uncached(location_id: str, tenant_id: str) -> dict:
+    """LLM theme summary over a labelled source sample — context, never proof."""
+    # The assessment snapshot is collected offline and never makes a scrape part
+    # of page latency. Other locations fall back to Places/fixture, but are still
+    # filtered locally: a 92-day label must describe the rows on screen.
+    sample = load_review_snapshot(location_id)
+    if sample is None:
+        raw = fetch_review_sample(location_id)
+        selected = [r for r in raw.get("reviews", [])
+                    if r.get("days_ago") is not None
+                    and 0 <= r["days_ago"] <= 92
+                    and (r.get("rating") or 5) <= 3
+                    and (r.get("text") or "").strip()]
+        sample = {**raw, "reviews": selected,
+                  "selection": "published within 92 days; rating <= 3; written reviews",
+                  "dataset_summary": {
+                      "source_rows_available": len(raw.get("reviews", [])),
+                      "recent_low_rating_written": len(selected),
+                  }}
     db = SessionLocal()
     categories = sorted({s.category for s in db.query(Standard).filter_by(tenant_id=tenant_id).all()})
     db.close()
@@ -142,22 +160,37 @@ def summarise_themes(location_id: str, tenant_id: str) -> dict:
     themes: ReviewThemes = get_provider().generate(
         purpose="review_themes", prompt=prompt, schema=ReviewThemes,
         tenant_id=tenant_id, audit_id=None)
-    out = {"sample": sample, "themes": themes.model_dump()}
+    theme_payload = themes.model_dump()
+    # Provenance and sample limitations are deterministic metadata. Never let a
+    # provider's generic five-review caveat contradict the selected snapshot.
+    theme_payload["sample_caveat"] = sample.get("sample_caveat", "")
+    out = {"sample": sample, "themes": theme_payload}
     _THEME_CACHE[(location_id, tenant_id)] = (time.time(), out)
     return out
 
 
 # Themes are re-summarised at most once per TTL. Without this, every agent run
 # that calls customer_signal_context would pay for a second LLM call over a
-# five-review sample that changes at most daily — a real cost line at portfolio
+# source snapshot that changes at most daily — a real cost line at portfolio
 # scale, and a pointless one.
 _THEME_CACHE: dict[tuple[str, str], tuple[float, dict]] = {}
 _THEME_TTL_SECONDS = 900
+_THEME_LOCK = Lock()
+
+
+def summarise_themes(location_id: str, tenant_id: str) -> dict:
+    """Return cached theme analysis and suppress duplicate concurrent calls."""
+    key = (location_id, tenant_id)
+    hit = _THEME_CACHE.get(key)
+    if hit and (time.time() - hit[0]) < _THEME_TTL_SECONDS:
+        return hit[1]
+    with _THEME_LOCK:
+        hit = _THEME_CACHE.get(key)
+        if hit and (time.time() - hit[0]) < _THEME_TTL_SECONDS:
+            return hit[1]
+        return _summarise_themes_uncached(location_id, tenant_id)
 
 
 def theme_summary_cached(location_id: str, tenant_id: str) -> dict:
     """Cached theme summary for tool use. Returns the themes payload only."""
-    hit = _THEME_CACHE.get((location_id, tenant_id))
-    if hit and (time.time() - hit[0]) < _THEME_TTL_SECONDS:
-        return hit[1]["themes"]
     return summarise_themes(location_id, tenant_id)["themes"]

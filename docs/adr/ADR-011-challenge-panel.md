@@ -30,23 +30,26 @@ human sees it.
   condition cited against a near-miss standard is still a defective finding, and
   it is the kind that gets successfully disputed.
 
-They run concurrently and **never see each other's arguments**. Challengers that
-can read each other converge, and three converged opinions are one opinion
-wearing a panel's clothing.
+They **never see each other's arguments**. They run concurrently on Postgres and
+sequentially on the SQLite POC because concurrent cost-ledger writes can lock the
+single-file database. Challengers that can read each other converge, and three
+converged opinions are one opinion wearing a panel's clothing.
 
 **Adjudication is deterministic Python, not a fourth model.**
 
 | Votes | Outcome |
 |---|---|
+| 2+ ABSTAIN | Inconclusive; never reaches a human as a finding and becomes a clarification |
 | 2+ OVERTURN | Never reaches a human. Becomes a clarifying question built from the challengers' own "what would settle it" answers |
-| 1 OVERTURN, or 2+ WEAKEN | Survives, downgraded: severity −1, confidence −0.15, every objection recorded on the finding |
+| 1 ABSTAIN, 1 OVERTURN, or 2+ WEAKEN | Survives, downgraded: severity −1, confidence −0.15, every objection recorded on the finding |
 | otherwise | Upheld, with the challenge record attached |
 
 Asking an LLM to referee LLMs adds a failure mode and removes an auditable one.
 A vote count is something a reviewer checks in four seconds.
 
-A challenger that errors is recorded as `ABSTAIN` and counts toward nothing — a
-failed challenger must never silently become an UPHOLD.
+A challenger that errors is recorded as `ABSTAIN`. One abstention forces a
+downgrade; two make the panel inconclusive. A failed challenger must never
+silently become an UPHOLD.
 
 ## Consequences
 

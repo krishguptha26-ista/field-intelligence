@@ -1,0 +1,2922 @@
+{
+  "schema_version": 1,
+  "location_id": "wolf-creek-atlanta",
+  "source": "SCRAPED_PUBLIC_WEB",
+  "collector": {
+    "name": "YasogaN/google-maps-review-scraper",
+    "commit": "a922af80538afb25c339ab603e256f15db429116",
+    "sort": "newest"
+  },
+  "captured_at": "2026-08-14T16:04:47.773136+00:00",
+  "policy": "One-off assessment snapshot. Public customer context only; never evidence of a compliance violation. Reviewer identity and profile data intentionally removed.",
+  "summary": {
+    "total": 362,
+    "written": 249,
+    "rating_only": 113,
+    "rating_histogram": {
+      "1": 42,
+      "2": 17,
+      "3": 28,
+      "4": 84,
+      "5": 191
+    }
+  },
+  "reviews": [
+    {
+      "id": "scr_f8264b4e60bba1facd4d",
+      "rating": 4,
+      "text": "Only played 3 holes before being rained out. Par 5, 3 and another 5 all of which played fair. Course plays fair from fairways and greens roll true but a little slow. Green speed influenced by grain.",
+      "published_at": "2026-08-09T03:33:19.737000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_775c7626007dcf11e0ab",
+      "rating": 1,
+      "text": "Pace of play is horrendous. It’s 12:20 and we just finished hole 10 with a 9:20 tee time.",
+      "published_at": "2026-08-08T16:19:52.623000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a8647e8e3ec5f556b037",
+      "rating": 1,
+      "text": "Very poor customer.service.\nCourse not worth $95 to play",
+      "published_at": "2026-08-05T21:11:32.212000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1bbfc17d17d2e9570718",
+      "rating": 5,
+      "text": "The place has dramatically improved following the renovation. Excited to do my next family outing over here!",
+      "published_at": "2026-08-05T00:09:37.987000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8ad997b4f77b5b1d6b42",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-08-03T02:59:55.255000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_cf36913d779158e01168",
+      "rating": 4,
+      "text": "I found this course while in town for work with a quick \"Golf near me\" search lol, honestly it did not disappoint. The course itself was in decent enough shape for the price and location. The gentleman marshalling were actually kind which is a 180 to the normal Marshall's and I tried to do the scenery justice but my pictures don't compare. All in all worth the visit.",
+      "published_at": "2026-07-29T22:58:45.170000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3c66f06c4d246531d2e3",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-07-28T22:46:28.098000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_aa3e970ca448cd729e8b",
+      "rating": 5,
+      "text": "Wonderful course, they just opened the 9 and 18th greens after renovations",
+      "published_at": "2026-07-25T19:32:05.546000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f0b149e265c3c684f156",
+      "rating": 5,
+      "text": "Beautiful course and a great place to play! The staff is always friendly and welcoming, and it’s clear the owner has done an outstanding job updating and maintaining the course. The conditions are excellent, and I especially love seeing the turtles, birds, and other wildlife around the ponds. It truly feels like a peaceful oasis in the middle of Atlanta. Highly recommend this course to anyone looking for a relaxing and enjoyable round of golf!",
+      "published_at": "2026-07-20T01:03:05.258000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_52496f3e42197058bb6b",
+      "rating": 3,
+      "text": "Updating my rating from two years ago. Almost 4-start worthy but still falls short.\n\nGlows (where does it shine)\nGreat shape. Love the changes to 9 and 18. Beautiful layout. Greens are amazing\n\nGrows (still needs improving)\nCarts in by 8pm in the summer cheats people of an hour of daylight for after work golf\nRange not always open\nNeed to add a walking 9hole rate for after work\nNeed a junior rate\nNeed to participate in youth on course\nGolf carts do not have rain covers\nNo drinking water on course",
+      "published_at": "2026-07-16T00:39:39.997000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c61ef2ce2dcadb6088de",
+      "rating": 4,
+      "text": "Solid golf course, best starting hole in Atlanta public golf! Fairways and rough in great shape, greens just topdressed, but they are gonna be spectacular by the end of July!. Redone holes are open (9 & 18) and although they aren't great, its a significant improvement. Build of new clubhouse and entertainment facility can't happen fast enough.",
+      "published_at": "2026-07-08T18:54:10.610000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_79d96026f5d17054c481",
+      "rating": 5,
+      "text": "Nice course, in great shape!!!",
+      "published_at": "2026-07-06T12:13:21.869000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9c8d3cd886957a45ae70",
+      "rating": 2,
+      "text": "The golf is good. Well kept course, however it’s 95° and I haven’t seen a cart staff since hole 4. There’s no water filling stations available on the course. I’ve called the clubhouse 3 times now, no answer. I am extremely disappointed considering I payed $80 for green fees, I would expect some customer service. Other than that, very good track. Definitely would play again (of course I’ll have to bring my own case of waters).",
+      "published_at": "2026-07-05T21:03:03.276000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1bb17e5a3b0bc5bc1c1e",
+      "rating": 5,
+      "text": "Used to play this course quite a bit, and today came back for the first time in a few years. Course is in very good shape and the staff is awesome. Renovations to 9 and 18 are great and make for a more visually appealing finish to both nines. Played early and finished right at 4 hours. A huge improvement from the past. Lost my putter cover and the staff went above and beyond to try to help find it. Will be adding Wolf Creek back to the rotation.",
+      "published_at": "2026-07-04T16:08:24.011000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c137c170ac1957396b71",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-06-30T17:17:23.637000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ee4dd9e7dd5c2617c108",
+      "rating": 2,
+      "text": "No water\nTemporary greens\nHigh Price $80 bucks\nCarts GPS don’t work",
+      "published_at": "2026-06-27T18:09:57.612000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9e5c053c6887fb806c49",
+      "rating": 5,
+      "text": "Beautiful course! Great customer service!",
+      "published_at": "2026-06-20T11:46:48.492000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6ffbb545cf40e007f4c5",
+      "rating": 3,
+      "text": "I really like this course, and normally I would get it five stars. However, I had friends drive an hour and 15 minutes to meet me there today, only to find out that there were two temporary greens and that they were just sanded last week. I’m leaving this review because I really feel like given the two times we called, we should’ve been informed about the situation BEFORE we got there.",
+      "published_at": "2026-06-16T15:36:57.977000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_82ba1a019de30541f3dc",
+      "rating": 2,
+      "text": "Hate to say it but has to be said. Played this course for the first time but will never be back. Paid over $75 for a round and unfortunately had a very disappointing experience.\n\nOur golf cart suddenly shut down during the round despite following all course rules and staying within the designated GPS boundaries. What made it even more frustrating was that two other groups experienced the exact same issue at the same time, suggesting this was not an isolated problem.\n\nI was playing with elderly gentlemen, and after waiting an extended period for assistance that never arrived until the last hole, we were forced to push our carts manually from hole to hole just to continue the round. One member of our group had another commitment afterward, so waiting indefinitely was not an option.\n\nWhen I spoke with management, I was told the issue was \"Yamaha's problem\" and not the course's responsibility. When I asked who I could speak with regarding the inconvenience and disruption to our round, I was essentially told \"nobody\" and that \"it was what it is.\"\n\nEquipment issues can happen anywhere. What disappointed me most was not the cart failure itself, all the ball from the range lating in the fairway at the first hole it's the lack of urgency, customer service, and accountability afterward. For a course charging premium rates, I expected a much better response.\n\nI hope management reconsiders how situations like this are handled in the future.",
+      "published_at": "2026-06-13T22:44:25.606000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_300f6bc9b5769aae7635",
+      "rating": 5,
+      "text": "Excellent customer service! Beautiful golf course! Greens and hills make it very challenging! I will return and recommend!",
+      "published_at": "2026-05-31T19:00:07.225000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4bbbfda9529993099ba5",
+      "rating": 4,
+      "text": "",
+      "published_at": "2026-05-30T05:54:49.844000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ba80bab2776a6af6110f",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-05-24T01:14:17.170000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2e2eb9911218b89ebbd8",
+      "rating": 4,
+      "text": "Hello family,  well where should I start.  If you are looking for a challenging course to play?  This one is it!! The Greens are exceptionally fast, this particular day the pins were set right on the edge of the slopes.  They also had a rise to them as if they were pulled up instead of turned and cut.\nThere is also some renovations going on which should have been revealed upon arrival.  With that being said, there should not have been a fee of almost $100.00....\nOutside of that our league enjoyed a great day fellowshiping ...",
+      "published_at": "2026-05-06T19:09:03.637000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_cd95450c8abe31cc3dbd",
+      "rating": 5,
+      "text": "I was really impressed with the conditions here. The staff clearly takes pride in the course—it’s very clean and well-maintained. The greens were very well maintained, which made for a fun challenge. On top of the playability, the views across the course are awesome. Highly recommend for any local or visiting golfers! One of the best courses in and around Atlanta.",
+      "published_at": "2026-05-03T15:00:46.273000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5e98ed07275bbb52fd5b",
+      "rating": 5,
+      "text": "Played it for the first time today. Great course. Challenging holes make it fun. Course is in great shape. The undulating Greens have a great roll to them. Will definitely be back.",
+      "published_at": "2026-05-01T22:04:44.120000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ef034564925706addeca",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-05-01T21:02:49.066000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ce08709e9d891d8e9ac4",
+      "rating": 3,
+      "text": "WE LOVE PLAYING THIS COURSE! 80 is a little steep for 16 holes as Right now the 9th and 19th hole is getting re built to have a real pro finish on a 9 hole round or an 18 hole round!\nI believe it will be a very exciting new finish for this course! I can’t wait to see the results!",
+      "published_at": "2026-04-23T15:24:45.395000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_62c4322448ca6c1a6435",
+      "rating": 5,
+      "text": "Just hit the range but course looks great. Very nice and affordable range balls. Great service",
+      "published_at": "2026-04-19T00:42:42.254000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2ecf93861bdef013a267",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-04-18T20:57:35.792000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0d6650b2ef1ee5908344",
+      "rating": 5,
+      "text": "Great time wonderful golf course",
+      "published_at": "2026-04-12T10:08:49.843000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1d4c1cb11bf81720a545",
+      "rating": 3,
+      "text": "Honestly a great course but it’s been a couple months of the course having 9 & 18 on temporary greens that don’t give you the full experience you pay for. No advance warning on the website nor in the clubhouse until after you’ve paid what you usually pay to play 18. At least give me a bag of range balls for the inconvenience — anticipating this sort of frustration is so easy. I’ll be back when it’s all 18",
+      "published_at": "2026-04-05T12:14:21.441000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_09effb9def672066c8da",
+      "rating": 5,
+      "text": "Great course",
+      "published_at": "2026-03-27T18:55:30.118000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e0ff16709bb6c04cffdf",
+      "rating": 3,
+      "text": "2 temporary fairway greens that were not disclosed prior to booking.",
+      "published_at": "2026-03-14T21:17:03.110000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8ef052fb1fdcdd31cfce",
+      "rating": 1,
+      "text": "Course is great. But this customer service is lacking. Imagine submitting multiple requests for Membership information and getting no response",
+      "published_at": "2026-03-09T18:17:36.433000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_00724d39a34ea20a75f0",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-03-01T05:53:12.397000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a7c818ef2933e3a468f0",
+      "rating": 5,
+      "text": "",
+      "published_at": "2026-02-16T20:42:36.194000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e72a555f9b59b0545335",
+      "rating": 1,
+      "text": "Full prices for two greens in the middle of the fairway that are unputtable, and turn 9 and 18 into 180 yd non par 3 holes. Wasn’t disclosed at all until payment was processed in the pro shop and offered 10% off next time for some “light remodeling”. There won’t be a next time. Disclosure and discounted rates should have happened before taking people’s money to play a course under major reconstruction.",
+      "published_at": "2026-02-14T17:17:48.794000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_986bf6c8cb01e8b194d5",
+      "rating": 5,
+      "text": "This was my 1st time playing here. I am so glad that I did. Beautiful course. Love the layout. Challenging but not impossible to play. Staff were helpful, friendly, and attentive. Special shout out to Cliff! He’s the man. I will definitely put this course on must play when I’m in town.",
+      "published_at": "2026-02-13T11:55:55.453000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_497526225e2ef4ffd113",
+      "rating": 3,
+      "text": "Decent course and layout during warm months, but overpriced for winter conditions. 2 temporary greens which weren’t disclosed when booking and also were not puttable. Also wide open tee sheet. Bringing winter price down would likely bring in more revenue for the course",
+      "published_at": "2026-01-11T18:24:15.932000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_09b5e8cd6de53596437c",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-12-24T22:34:13.392000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9503f17426a7eaa8af88",
+      "rating": 2,
+      "text": "Staff is great. Layout of course is great. However, no Marshall, no starter. Two groups of 5 in front of us? No water anywhere on course? Only saw cart girl once in 5.5 hour round (super slow pace). Greens are like cement, WAY too fast, plus they place almost every pin on a slope. I just played Pinehurst #2. Putting was easier at Pinehurst. They need to let their greens grow a little. There’s no grain or grab. It’s kind of ridiculous.",
+      "published_at": "2025-12-14T15:07:34.284000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fc4e66cf7c22b7593f6d",
+      "rating": 5,
+      "text": "I stumbled across this course while trying to squeeze in a round on the south side of Atlanta before flying out the next day, and honestly, I was pleasantly surprised by what I got for the price.\n\nIt’s a solid, challenging 18 with plenty of tee boxes, which worked out great for me and my wife. Even after a couple days of rain, the conditions held up really well.\n\nThe scenery was a standout: everything from wide-open fields to swampy stretches to wooded holes. It felt like you were getting a little bit of everything in one course.\n\nI’m already looking forward to my next trip to the Atlanta area, and I’ll absolutely carve out time to play here again.",
+      "published_at": "2025-12-04T02:19:41.244000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_477a6801da5fcd985b55",
+      "rating": 5,
+      "text": "Came here after I checked out of my hotel as I had some hours before my flight. I was impressed with the hospitality, the pace of play, the value for the money, the rolling hills and elevation changes. I’m from Toronto, the grass was some of the trickiest rough to play out of, the course is long, challenging, and well maintained. The staff kept my luggage safe and secure as I came in an uber. Even as a local, I can’t see why you wouldn’t give this course a try. If you’re visiting I’d definitely make this course the last destination, not just for airport proximity. Only room for improvement would be to have a cart girl on course, and I wish there was a shower on the premises before I flew out but I know not all courses have that. Still a great experience and will return next time I’m in the A.",
+      "published_at": "2025-11-06T01:15:01.038000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_47c32845d54e0d1cdfa9",
+      "rating": 3,
+      "text": "My friends and I feel this course is in great shape and it’s conveniently located.  However my most recent experience was bad!   The marshals turned a fun evening of golf into a bad experience.  First, on the 2nd hole, a marshal rudely rushed us and demanded to see our receipts.   Which of course we shared with him.  Later in the round we skipped a few holes since the group ahead of us was very slow.  A marshal appeared and said he’d been following us and we can’t do that!  We shared that it was getting dark and we were only playing 2 more holes.   He argued with us about that until the other Marshal told him we had already agreed on that with him.  It started as a good day of golf, but was unnecessarily turned into a bad experience.",
+      "published_at": "2025-11-04T02:03:11.328000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2f536881c31d00042169",
+      "rating": 5,
+      "text": "Good course nice greens",
+      "published_at": "2025-10-16T20:10:00.551000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_274f1805d85481371a10",
+      "rating": 5,
+      "text": "I recently had my first time playing this course, and I was thoroughly impressed with the fairways and greens. Since I didn’t have room for my own clubs while traveling, I had to rent some. Fortunately, the rental clubs were in excellent condition. Cliff, the staff member, was incredibly helpful and friendly. Overall, I highly recommend this course.",
+      "published_at": "2025-10-16T18:17:34.908000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b787e51f74b72105a64c",
+      "rating": 5,
+      "text": "Fun course",
+      "published_at": "2025-10-15T12:38:17.358000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e8f752e9e4db39d01726",
+      "rating": 4,
+      "text": "",
+      "published_at": "2025-10-13T21:40:55.953000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c769d53b13a3a0d6a743",
+      "rating": 5,
+      "text": "Update: Played 9.30.2025:  Course is magnificent.  Tee box maintenance and replacement is almost complete and, where complete, is really well done.  They've also cleared some overgrowth around greens and fairways to clean up some narrow lines - really improved the course.  Lastly, the new changes on 6 are underway (IYKYK) so this is going to be a huge improvement.\n\nPlayed here about 6 times since late spring. Mostly early AM or on weekdays, so haven’t run into pace of play issues as the course either isn’t crowded (weekdays) or I’m one of the first people teeing off.\n\nYes, on-course amenities are limited. Bring your own water but that’s par for the course on all the municipal and privately-owned/public courses in ATL metro.  They do run a beverage cart (I think just Friday and weekends although not certain about Friday).\n\nYes, range hours can be a tad spotty. It’s largely dependent on weather. The course is river bottom so holds water after a rain. Heavy rain the night before- range closed.  They have a great putting green AND have a new plan for the range so look for improvement.\n\nWith all that said, the course is phenomenal. Greens are in great shape and run a bit fast.  Fairways are very well managed with a nice clean first cut rough and a long second cut rough.  Most tee boxes are in great shape, except where they’ve been heavily shaded and for most of those they are working on some form of mitigation plan.  This is absolutely one of my favorite courses in the metro area and I’m going to continue to visit as often as I have time.\n\nI have one small criticism about course routing in that it starts with a par five followed by a three followed by a five. It then ends on two par fives. That’s a pretty minor thing and has more to do with my preference for course routing so not a major issue. If you enjoy course aesthetics, this has a really lovely central pond and creek area where lots of holes start or terminate. It’s an absolutely gorgeous view on a nice day.\n\nI’ve always found the staff to be friendly both at the front desk and when they’re running a cart beverage on the course.\n\nIn terms of pricing, I agree it seems a little expensive on the weekend but is much more affordable during the week. However, labor cost are extraordinarily high for golf courses, and I can’t imagine that they have much of a choice in the way they price. Frankly, it’s not that much more expensive than DeKalb or Atlanta municipal courses.",
+      "published_at": "2025-09-30T18:46:15.926000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fd42bba5e2f631fcbe40",
+      "rating": 5,
+      "text": "Beautiful course, we were in town on a work trip. Absolutely loved our time. Very accommodating team.",
+      "published_at": "2025-09-29T10:49:05.877000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_136be3e694aa17c27cfa",
+      "rating": 5,
+      "text": "Beautiful, well-maintained course. Great variety of hole lengths (Par 5, Par 3, etc.) the staff is very friendly - Cliff was super helpful and made sure we were taken care of and enjoying ourselves. Highly recommend Wolf Creek!",
+      "published_at": "2025-09-24T16:37:46.292000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9bd3ba2beb38e1dd37fe",
+      "rating": 4,
+      "text": "Wolf Mountain has a really great selection of wines. We really enjoyed our time there. The flatbreads were so tasty and fresh and the view was serene. Only reason it lost a star was the website mentioned tours but we learned that they cancelled tours once we got to the vineyard and because the artisan cheese board was very very small but it does taste really great.",
+      "published_at": "2025-09-22T20:33:27.886000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_901cb1070dd48ef646a0",
+      "rating": 1,
+      "text": "Overcharged for a round, price was almost double what was online. Not a single water station in the entire course/establishment. Exactly what you’d expect from this environment",
+      "published_at": "2025-09-22T06:54:42.858000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_13f695f2cacb7744a3aa",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-09-21T11:51:04.257000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_43490d56c729dad8427e",
+      "rating": 5,
+      "text": "Great experience! from Houston and was there for the Astros game this past weekend. The course is doing some maintenance, but it’s still great! just a little challenging for a newbie like me! Definitely recommend it!",
+      "published_at": "2025-09-15T14:22:35.786000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_26436018695609a1437f",
+      "rating": 5,
+      "text": "I have come to the Atlanta area from Ohio. Five stars due to the customer service from Cliff. Great guy at the counter. Course was in good shape, greens were good. Definitely happy I played here.",
+      "published_at": "2025-09-10T16:42:08.976000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_679a11fff51394266b00",
+      "rating": 5,
+      "text": "Greens were kept well and the whole course was fantastic",
+      "published_at": "2025-09-06T21:23:27.719000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_33145401fedfe1d00e65",
+      "rating": 5,
+      "text": "What a beautiful course! We had a large group of 12 walk in the door with multiple rentals and were taken care of excellently. Cliff and his staff were great to work with and despite how chaotic everything was, they got us out on the course in no time. Will look forward to playing at Wolf Creek in the future!",
+      "published_at": "2025-09-03T15:52:01.013000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d7bef5db2b7d439dcf0c",
+      "rating": 5,
+      "text": "I hadn't played this course in a few years, and it's undergone a signficant transformation. They've clearly put a lot of work into the course and it's in excellent shape. Greens, fairways, and rough all in great condition. Staff is friendly and accomodating. Played 18 on a Tuesday in under 3.5 hours. Will be back soon.",
+      "published_at": "2025-09-03T15:29:51.292000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c2c0da955f9a130b273f",
+      "rating": 5,
+      "text": "This is a hidden gem! They are putting a lot of money into the course and every time I play it it gets better. Even the food service has improved.  The cart girls have been showing up more frequent and appear to more knowledgeable of course etiquette than before. I play here almost every week and I love it. Great course and great price!",
+      "published_at": "2025-09-02T19:58:17.574000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b2f0d60c5d63379069d2",
+      "rating": 2,
+      "text": "This course is beautiful but management is lowkey trash. Came out here on a Sunday, they have no range balls, were told, “they’re picking them now, but have no ETA”. They charge like $70-80 for 18 holes, there are no water refill depots on the course, they don’t have a chipping green, they don’t have anywhere to clean clubs after rounds, so my question is, why are yall charging folks so much? 🤣🤣🤣🤣 this is a $40 course, if that.",
+      "published_at": "2025-08-24T15:02:02.382000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_333328449ef3b7d70885",
+      "rating": 5,
+      "text": "Enjoyed the round of golf at Wolf Creek. Amenities are okay, however they are improving.\nGreens and fairways are in great condition.  Rough is ROUGH!! Keep it in fairway!!!!\nHad early tee time so pace of play was no problem. Coming back in fall.",
+      "published_at": "2025-08-16T16:19:45.525000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d2020e6425cbccadfa21",
+      "rating": 5,
+      "text": "Great golf course for my game (wide and forgiving) and getting better. Throughly enjoy this course. Rebuilding a couple of Par 3s and cutting down some trees. Very scenic. Seems as if the new owners are investing a lot into the course. Reasonably priced and highly recommended.",
+      "published_at": "2025-08-15T03:11:28.340000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e6de7d64db6db08628e1",
+      "rating": 5,
+      "text": "Got early tee time. Their internet was down however staff was friendly and professional considering the situation. Pace of play was great. Greens and fairways on great condition. 11 tee box is being upgraded other than that.. great golf facility. Keep improving Wolf Creek!!!",
+      "published_at": "2025-08-10T19:27:21.075000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4f921e059ab9f4aa3d6d",
+      "rating": 5,
+      "text": "Fun and challenging course. It’s in great shape with a very friendly staff.",
+      "published_at": "2025-08-08T19:53:13.677000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_651db1e0203cd72d05b7",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-08-07T03:41:06.708000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e95a8ce36c5df0927f83",
+      "rating": 5,
+      "text": "Great course fairways in amazing shape greens were nice. Faculty were nice and hospitable.",
+      "published_at": "2025-08-04T19:00:55.250000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ca933cb756fe2a65a3a7",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-07-26T18:33:04.939000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7c3897848d66374c73af",
+      "rating": 3,
+      "text": "Solid course with good tee boxes. Challenging holes and pin locations.  Would play again if the price comes down as it’s not worth $70 on a Friday. Dynamic pricing based on the day of the week. Needs to go back to the $50-55 range. Used to give a free bottle of water before the round, not anymore. No water jugs on the course. Ran out of hot dogs for the day at 11:40",
+      "published_at": "2025-07-26T15:57:43.666000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_58dc0f5dd540aecca040",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-07-13T16:36:47.192000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_34975efb92d7cd968b60",
+      "rating": 5,
+      "text": "Nice course and service",
+      "published_at": "2025-07-12T13:29:37.417000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7bd4c721d478246808e3",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-07-11T20:12:52.541000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e5c4d9699c2a211a60a3",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-07-11T13:42:35.017000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f45128db1c772c464ded",
+      "rating": 5,
+      "text": "Absolutely beautiful course. Fairways are in perfect condition. The first cut can be tricky if you’re not used to the grass. Greens are challenging, which makes it even more fun.\nThe staff is very friendly and courteous.",
+      "published_at": "2025-07-01T17:19:05.724000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_51d2681f2f3221e5c40a",
+      "rating": 1,
+      "text": "If you enjoy 5.5-hour rounds of golf behind groups of 25-handicappers with zero course etiquette, this might be the place for you. Expect to see players wandering into the driving range from hole 1 looking for their ball, and absolutely no enforcement of pace-of-play standards.\n\nStrangely, despite the total lack of course management in that regard, the staff seemed far more concerned about my 3-year-old riding along in the cart “for liability reasons.” Instead of offering a waiver to allow a parent to enjoy a round of golf with their child, they made it clear this wasn’t acceptable.\n\nFor reference, I regularly play in under 3 hours—even with my toddler—because I understand the flow of the game and bring my brother to help. But here, you’ll spend more time waiting on tee boxes than hitting shots, watching the group ahead chunk it 30 yards at a time.\n\nIt’s frustrating to see such backwards priorities at a course that clearly caters to casual or beginner players but won’t accommodate a parent sharing the game with their kid. I won’t be coming back—kid or no kid.",
+      "published_at": "2025-06-29T17:27:50.347000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0beda02bfeae3b317c43",
+      "rating": 5,
+      "text": "This is a great course. Cliff is an awesome guy. The greens were in great shape. I’ll definitely be back!",
+      "published_at": "2025-06-28T22:50:09.732000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a7b5539db9829a6e5ab8",
+      "rating": 5,
+      "text": "A beautiful golf course just outside of Atlanta",
+      "published_at": "2025-06-21T11:12:09.569000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1c2bacd9d8e98045e305",
+      "rating": 5,
+      "text": "Awesome track. One of the best public courses in the Atlanta area. Great grass, nice staff, and challenging yet fun holes.",
+      "published_at": "2025-06-19T23:11:25.521000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_38ae0d9c6991fb35e490",
+      "rating": 4,
+      "text": "In good shape. Poor etiquette from some players.",
+      "published_at": "2025-06-17T15:04:00.684000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d899f1900d6c03c71edd",
+      "rating": 5,
+      "text": "One of the best public golf facilities in metro Atlanta. The course features compelling and high-quality green complexes, a fun and thoughtful routing, and a layout that’s both challenging and rewarding. Conditioning is consistently excellent, and the setting is beautiful from start to finish. With the improvements being made under new ownership this is a course I’ll continue to recommend and play without hesitation.",
+      "published_at": "2025-06-08T00:46:27.045000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c6b2b0caed508e095183",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-05-26T13:29:23.301000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6e59f33baa4127aa307b",
+      "rating": 5,
+      "text": "H O F Calvin Johnson\nHere Today\nHittin the Long Ball\n& Greens\n\nLooks like he's still playin\nFor the Detroit Lions.\n\nMEGATRON GETTIN it.",
+      "published_at": "2025-05-22T19:05:42.580000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_40ce58ee4f721f4a99c9",
+      "rating": 2,
+      "text": "Another course with music what a joke",
+      "published_at": "2025-05-16T19:12:13.043000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ebdef49a0ecb65b2dbf8",
+      "rating": 4,
+      "text": "",
+      "published_at": "2025-05-08T02:43:36.315000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_126bdf280911feee325d",
+      "rating": 1,
+      "text": "Stay away. Not the same place it was years ago. The cart paths are a wreck. They don’t sell beer or allow you to bring it. Staff is very rude. It’s a travesty because this course use to be top notch",
+      "published_at": "2025-04-27T22:26:07.625000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0ba84b11718c32f39588",
+      "rating": 1,
+      "text": "Kicked us off 18 at 6:45 because they had to get the cart boys home at a “decent” hour. (Sun doesn’t go down until 8:30) Pace of play was horrible and the Marshalls driving around the entire time didn’t do or say anything about it. Didnt know when I paid for 18 holes I was paying to play until the cart boys wanted to leave. Terrible customer service.",
+      "published_at": "2025-04-27T00:39:40.373000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a3b02d08c07bea93a7c1",
+      "rating": 5,
+      "text": "Great course layout. Challenging but rewarding. PGA type greens & picturesque surroundings.  Driving range, putting greens, & a great friendly staff, eager to assist...",
+      "published_at": "2025-04-26T00:16:49.440000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_428c6f7accddb78fbe75",
+      "rating": 5,
+      "text": "",
+      "published_at": "2025-04-20T19:43:53.500000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_089348103e91612f96d2",
+      "rating": 1,
+      "text": "Worst golf experience, the pace of play is horrible, the marshals drive around the course and do nothing, they stack tee times on top of each other. We showed up with no carts ready, was late to the tee time because of not having a cart. 6 hours of my life wasted on this course. To pay 70 dollars for this experience is truly disappointing. Wish I could have my money back.",
+      "published_at": "2025-04-05T22:45:48.499000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_46ac33125568a7d5c546",
+      "rating": 1,
+      "text": "This is the worst pace of play I have ever seen. The Marshalls do not care, we showed up and they didn’t have any carts ready. Didn’t tee off till 20 minutes past tee time. The worst management I’ve ever seen. Currently playing a 6 hour round",
+      "published_at": "2025-04-05T21:15:55.893000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_86395487b46952ca1f4b",
+      "rating": 4,
+      "text": "Had an awesome time.  will play again",
+      "published_at": "2025-04-04T20:38:05.698000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_aa05151627c7cf3d1721",
+      "rating": 5,
+      "text": "Duratec Roofing Solutions came by for a work event and we had an amazing time! Great course and even greater people!! Clarise at the front desk was amazing as well as Shabazz, and Jabari. All three were 5-star in not only hospitality, but in helping us get organized on and off the course! Excited for our next trip back to Wolf Creek Golf Club!!!",
+      "published_at": "2025-04-03T13:23:03.674000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_86a6ea7041dca60e2663",
+      "rating": 1,
+      "text": "Disappointed in my experience here.  Customer service was lacking and being more rude towards an issue i was willing to resolve. Hidden fees were not disclosed during booking process. The lack of transparency was frustrating and left a bad impression. The screens for the cart to alert the staff of an issue does not work and they expect you to resolve the issue on your own. Additionally instead of being on-coming and direct the manager ignored the problem.\n\nCart shut off on six and i was in need of a cart due to injury. Waiting nobody came with an extra cart. Manager didn’t want to resolve the issue with the Cart and says he actually shut the cart down way before closing. Instead of coming to address the problem with the cart he just shut it off. After walking the 3 mile stretch back the manager began to be hostile. Poor customer service and poor  problem solving skills.",
+      "published_at": "2025-03-29T21:55:01.266000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5921e0d12471dfe0852f",
+      "rating": 5,
+      "text": "The course is in great condition for being so early in the season. They have really opened up the course by removing some pesky trees and shrubs.\n\nMy new iPhone fell out of the cart and a Ranger tracked me down to return it. All the staff were very helpful and kind.",
+      "published_at": "2025-03-29T21:41:45.903000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5cb7c34c90b7d21fb160",
+      "rating": 3,
+      "text": "Golf course was laid out well with interesting and challenging holes. Not in the best condition when we played. Staff very helpful and polite but the facilities let it down. No bar or restaurant, you could get snacks and coffee. No pro shop to speak of ( forget my pitch repairer couldn't buy one !!)\nBut for the money excellent value... Play here it's great",
+      "published_at": "2025-03-28T07:28:48.494000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ede4bab1f94e5a407732",
+      "rating": 5,
+      "text": "This course is going to be amazing once it's completed.  They are redoing some holes and building a clubhouse.  The new sand traps are beautiful. I will definitely be going back once it's completed.",
+      "published_at": "2025-03-25T13:19:27.692000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_34ad88918a1cd5ca2ddf",
+      "rating": 1,
+      "text": "8 some in front of us.  Called course and they did nothing.",
+      "published_at": "2025-02-01T18:36:57.996000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2363a6c70fa0626782a3",
+      "rating": 5,
+      "text": "Great course",
+      "published_at": "2025-01-22T01:37:09.335000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_010393b73218a4581a9a",
+      "rating": 4,
+      "text": "Very nice course layout was interesting. Staff was very helpful",
+      "published_at": "2024-12-21T23:19:45.001000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e5a4c50d18e390f22b02",
+      "rating": 5,
+      "text": "Best golf for the price.",
+      "published_at": "2024-12-11T13:27:22.167000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4bd353db3b9c47280f44",
+      "rating": 5,
+      "text": "Live in Florida but love playing this course when we’re in town: it’s in great shape. Staff is friendly and helpful.",
+      "published_at": "2024-11-08T13:31:14.829000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_15540939c479f9bc47ee",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-11-02T04:53:07.155000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f3143cd2a729e43ea8d6",
+      "rating": 3,
+      "text": "Some of the course conditioning could be a bit better. Wish there were walking rates as I paid the same amount walking as the rider rate but whatever I'm not a brokey! This was my first time playing so the young man at the starter asked if I REALLY wanted to walk. Good Lord some of the green to tee walks were kinda long and the elevation changes were striking at points. Also there were some holes where you had to walk in total opposite directions because they didn't have bridges to walk straight to the next fairway over the ravines. However the trek was not as bad as other mountain courses I have walked. Still staid in front of the guys who let me through on the first box and kept about a 5 hole cushion. Greens ran true and for a public track, they were pretty well above average. If they had a membership I would contemplate it but it would be a tough sale for me because outside of member guest I don't use carts smh. All in all, I paid 42 bucks on a Wednesday when I think it should be priced at around 28-32 bucks but they are gonna get whatever they want with it being a historic affluent African American neighborhood.",
+      "published_at": "2024-10-31T09:59:08.187000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b8c72c46aece47d7f303",
+      "rating": 1,
+      "text": "",
+      "published_at": "2024-10-15T16:54:53.904000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9d7e6cb3a0584212039e",
+      "rating": 1,
+      "text": "By far the worst customer service I’ve ever experienced on a golf course. They don’t care about customer experience at all. Only about going home early. This place is a joke and will not ever receive another penny of my hard earned money.",
+      "published_at": "2024-10-11T11:23:32.863000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e7ba938bb321516ddb32",
+      "rating": 5,
+      "text": "It was my pleasure to support my Friend of Longstanding and the South West Highschool Alumnus Association.",
+      "published_at": "2024-09-14T02:38:16.921000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_04983890f27dc87f584c",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-09-03T20:35:56.490000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c31f27e971c4d7122e5e",
+      "rating": 4,
+      "text": "This course was definitely fun to play,  but for 70 dollars, it lacked some basic amenities. Will play again in the future.",
+      "published_at": "2024-09-02T21:14:41.236000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5e9ebcfededd2dc8ba87",
+      "rating": 3,
+      "text": "$45 course for the price of $75. Bare bones amenities. Very expensive concessions. $4+ for a Powerade. Interesting course, but better value out there in the Atlanta area.",
+      "published_at": "2024-09-02T20:45:45.539000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8421f6ec205c5a678398",
+      "rating": 5,
+      "text": "Great course .... greens in great shape .... staff friendly and helpful..... no cart service as a heads up but left the cart with comp water on it at the turn and comp water to start .... hard to beat!",
+      "published_at": "2024-08-31T19:01:30.992000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0fcfc3b8e673d63b35da",
+      "rating": 5,
+      "text": "This is the 1st time in a very long time I played Wolf Creek and was very surprised how well manicured the course was, really enjoyed playing it again.",
+      "published_at": "2024-08-31T01:15:54.827000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a6eb92c3dbe1eae57e92",
+      "rating": 5,
+      "text": "Very good condition",
+      "published_at": "2024-08-30T23:05:53.203000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8d4e9a2162aa86f4705e",
+      "rating": 4,
+      "text": "Decent course with tons of potential. The staff was great aside from one woman behind the counter who tried to say we dented the rental club driver which was dented long before we rented them.\n\nThe course itself is beautiful over rolling hills with lots of variety. My only complaint would be how the tee boxes are marked and maintained. The color markers should be placed on top of the tee box, not buried on the far side no one can see from the cart. It’s the only course I’ve been to where I couldn’t find the tee boxes on numerous holes.\n\nPs - get better rental clubs, cart service, and clubhouse selections.",
+      "published_at": "2024-08-18T17:32:25.587000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fc88a752649aff01ebe8",
+      "rating": 5,
+      "text": "What an experience! Truly one of the best managed public courses in the southeast. If you ever need help, just ask for Cliff or Deborah… some top notch service and a pure course. Been playing this course for 10\nYears and it’s under the best management I’ve seen so far. Kudos to Wolf Creek Golf",
+      "published_at": "2024-08-09T21:54:51.891000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9f960b394676e53fe398",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-08-03T21:14:41.441000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_476d4af9f89d0f350e90",
+      "rating": 5,
+      "text": "Course is coming in and looking great",
+      "published_at": "2024-07-19T09:53:27.288000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6383b9d68e125f3eeaff",
+      "rating": 1,
+      "text": "Had a large group  (32 guys) today and was charged $74. Greens were absolutely horrible condition. SHAMEFUL",
+      "published_at": "2024-06-30T00:37:01.027000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_11c7393236d56c45bbf6",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-06-13T11:27:58.870000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fe3f15ff5b69f72e5754",
+      "rating": 4,
+      "text": "Above average course. The greens were aerated recently but still \"puttable\". The fairways are nice, layout is challenging. I'd go back - even with the greens being punched.",
+      "published_at": "2024-06-11T22:34:52.393000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8fcac5ece45983a3974e",
+      "rating": 5,
+      "text": "Had a great time playing the course today.  Very fun late out with a good mix of holes.  Greens very recently aerated but course overall looking in great shape.  Very nice golf carts with GPS as well.  Looking forward to playing again here soon",
+      "published_at": "2024-06-11T01:03:53.050000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a086b1b79c8bc2dae0f5",
+      "rating": 3,
+      "text": "It’s a fun and challenging course, but we spent half the time driving the cart in reverse because the geofence is messed up even on the cart paths.",
+      "published_at": "2024-05-11T11:35:29.342000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b6ffcfca3244ad6cc837",
+      "rating": 4,
+      "text": "A very good golf course! I remember when it opened I have played it for the last 24 years. I’ve watched it go up and down. It’s on the upswing. I am looking forward to investing in the clubhouse having a snack menu a stronger breakfast-lunch…\n\nThe greens are in very good shape. A few rough spots here were there, but for the most part, the value in the course are really, really good. I recommend you play this course and have fun. The golf carts are going to be nice. It is challenging, but I really do believe it’s going to be rewarding as welll!",
+      "published_at": "2024-05-04T09:43:05.179000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_807a427692ef0342ac05",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-03-16T13:50:50.108000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_76f3b5e28f8047ddfbe1",
+      "rating": 5,
+      "text": "",
+      "published_at": "2024-03-06T02:29:17.185000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_730cefcc9b34fb8bee39",
+      "rating": 4,
+      "text": "",
+      "published_at": "2024-02-27T22:53:41.577000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5119a2d48bff218fcef8",
+      "rating": 1,
+      "text": "",
+      "published_at": "2024-02-23T20:16:14.260000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_929338c9ba0d54e40519",
+      "rating": 2,
+      "text": "Was looking forward to playing here again but found out they won't let you play 18 holes after 1pm... they won't even let you try to play 18 holes.  I will definitely be taking my business to courses that at least let you play until it gets dark.  Such a disappointment for a course that has potential, but not the commitment to players trying to play in the winter when days are short and extremely limited.... terrible management and terrible publicity for your course that isn't as known or popular as others in the area.  Good luck to you because I don't see a bright future if this is how you do business.",
+      "published_at": "2024-02-02T14:45:16.640000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e3a9c9be4f75dc164771",
+      "rating": 5,
+      "text": "Have been playing Wolf Creek off and on for at least 5 or 6 years. As others noted, there was a definitely a period between ownership changes where the course got in pretty bad shape. I went back in December 2023 and found the course to be very good shape for winter conditions and the greens probably in the best condition I've seen there. Worth a vist and convenient to intown Atlanta.",
+      "published_at": "2024-01-05T21:08:10.468000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a979e6562f01b2d8b4db",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-12-17T00:55:26.882000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fe8b4087b82c21688fe8",
+      "rating": 4,
+      "text": "",
+      "published_at": "2023-12-02T22:47:17.049000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8c6a7f75b8f336323fa6",
+      "rating": 5,
+      "text": "The course appears to be under renovation as the tees were way up and the white and red tees were at the same spot. Most of the greens had a fungus and it looks like they will lose a number of greens. They already have one temporary green.  The pace of play was good and the fairways and rough were decent.  If they can fix the greens it would be a 5.\n\nI played on 10/31/23 and the course has been renovated.  The greens were in great shape and the course is fun to play. I would recommend that players put this course back on their list.  We played 18 in 3 hours which is another bonus.",
+      "published_at": "2023-10-31T17:30:28.507000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8c363eaf0b7f0c03dff4",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-10-29T03:23:02.279000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2770c1b4de66707537e3",
+      "rating": 4,
+      "text": "My husband and I really enjoy this course and the staff is also super friendly. My only reservation to a 5 star review for this lovely public course is that there are multiple holes that do not have a proper tee box for the ladies. They’ve just put red markers down somewhere in front of the white tee boxes - and in most cases these ladies “tees” are on an incline and with untrimmed Bermuda grass. In those cases, I end up playing the whites w my husband.",
+      "published_at": "2023-10-23T01:55:42.524000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_81b3f5d2cbcb625cf814",
+      "rating": 3,
+      "text": "",
+      "published_at": "2023-10-22T21:32:25.613000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_767b788694d8f3df0438",
+      "rating": 5,
+      "text": "Beautiful place",
+      "published_at": "2023-10-16T21:58:24.395000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a52689addf6496062d10",
+      "rating": 5,
+      "text": "First time visit to the club. Beautiful fairways and greens. Updated golf carts, friendly staff, but my favorite was meeting the golf marshal Kevin! 🤩🤩",
+      "published_at": "2023-10-01T11:34:07.694000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_27b3ee1161cbe09f7367",
+      "rating": 4,
+      "text": "Great course at an even better price. I’ll be back.",
+      "published_at": "2023-09-29T21:39:29.459000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6c5a285fce9c8f5d24f0",
+      "rating": 4,
+      "text": "",
+      "published_at": "2023-09-16T12:20:05.143000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_470c30cc634a28de16ca",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-09-13T03:01:05.276000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a42c5886455e799aebe1",
+      "rating": 5,
+      "text": "Played there August 15th. Course was well maintained, in fact as we played some holes were being serviced. Golf carts are out of this world!! Maps and distance were on the screen in the cart. Only draw back is,  if you're new to the course,  the cart will stop if you are in a restricted area in the fairway.\nMost importantly was the great customer service at the front desk! Denise was very welcoming to us.  I left a putter cover on one of the holes, left my info for her to call me if returned, and she did.  And I believe she stayed a few minutes past her shift to do so. Overall great experience there. Can't wait to play there again.",
+      "published_at": "2023-08-17T21:00:02.956000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0ce64e5072af5821f6cc",
+      "rating": 5,
+      "text": "Great shape! Decent price",
+      "published_at": "2023-08-12T18:48:31.931000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e44af2209a4924dc9a8d",
+      "rating": 5,
+      "text": "Played golf today, 8/2/2023, at Wolf Creek Golf Club. Club representative, Denise greeted us with a pleasant conversation and great service.  The course was in excellent shape! We had a wonderful time, and we are planning to schedule another round of play in the very near future.",
+      "published_at": "2023-08-02T20:20:24.629000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ad7756675d4b71671968",
+      "rating": 5,
+      "text": "This was our first time coming to this golf course. Stopped here on our way back home to Arkansas and we are glad we did. We really did enjoy it. Everyone was very friendly and very professional. Also, the greens are nicely taken care of and the golf carts are excellent with great features. A huge thank you to Cliff and Kaylee (hope I spelled that right) for helping us get our sunglasses back to us. We accidentally left them in the golf cart.",
+      "published_at": "2023-08-01T17:32:01.525000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b11bbe27c6ea4fa62ec0",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-08-01T04:42:27.029000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2aef46b428104ba107f5",
+      "rating": 5,
+      "text": "I just played a round of golf at the much improved Wolf Creek Golf course. The greens are in great condition!  I was warmly greeted by Denise and she updated me on the carts and course improvements. I have always enjoyed the customer service from Denise, but the greens had deteriorated and we stayed away from Wolf Creek for months. It was a good golf outing. Note, the prices have changed since my last visit.",
+      "published_at": "2023-07-14T13:29:54.585000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2c49dcccefe32a3156f9",
+      "rating": 4,
+      "text": "Challenging course! Nice open fairways well-maintained greens.  Need clubhouse and larger pro shop. Affordable.",
+      "published_at": "2023-06-24T02:02:37.112000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f13453c7f32778beb013",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-06-06T23:56:12.049000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_da8ea286bf425f63c2c8",
+      "rating": 5,
+      "text": "Very nice course! Good shape after this winter. Play moves nicely!",
+      "published_at": "2023-05-30T19:35:00.789000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c134c8a44ec41aa5a84c",
+      "rating": 4,
+      "text": "It's a simple long-range course with good price. I liked it because there are not many options for a public course that have more than 3 holes of par 5s. They should work on the signs, though.",
+      "published_at": "2023-05-15T19:43:02.328000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5d9d00c86724d30e9381",
+      "rating": 5,
+      "text": "This is my home course. I’ve been coming since the days of the clubhouse trailer. It’s been a tough past 12 months. The new greens are in and starting to get seasoned. They are definitely fast. Denise runs the clubhouse with style and grace. We are grateful for her and the rest of the team. I see things that need improvement. I’m giving it a chance before I pass judgement. Nonetheless, my group is out there 2-3 times a week. We will see what the summer brings….",
+      "published_at": "2023-05-05T13:55:09.044000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f2d20d6fa018ad640f17",
+      "rating": 2,
+      "text": "Course at one time was one of the best in the city, but over the last year has become one of the worst, especially for its price. Some greens are unplayable and fairways are terrible. Should be called Dog Creek unsteady of Wolf creek!",
+      "published_at": "2023-05-02T19:58:01.299000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8d9d0768d1a411f9e4cd",
+      "rating": 1,
+      "text": "On 4/23/23, Me and my fellow golfer (Mr. Barnes) booked at T Time @ WC around 4:15PM. Mr. Barnes showed up as I was on the range chatting with friends. When I entered the reception area, Mr. Barnes and the customer service rep (Denise) was discussing WC pricing. As Mr. Barnes inquired about pricing, Denise was getting more hostile, and angry. I also asked a question regarding WC pricing because on 4/22/23, we played at WC with a T Time around 4:15PM. I was charged $63.57 which I thought was too much according to the time. According to Denise I was charged correctly. On 4/23/23 around 8:00AM, I called WC to speak to the manager regarding the charge. I spoke to a gentleman @ WC regarding the charge. And he stated he would let the manager know. I left my number and as of today, I still haven't heard from the manager of WC.\n\nAs she spoke to us, the professionalism was gone. She was the following::\n1. Raising her Voice, shouting\n2. Verry aggressive posture\n3. Threatening to call the police on us\n4. Cursed at us, telling us to get our A-- off the property\n\nNeed I remind you, this is how you treat customers because we questioned a round of golf??? I never raised my voice at Denise. I believe Mr. Barnes may have raised his voice a little, but that's because she was screaming at him in a condescending manner!! Mr. Barnes booked up a T Time and she said \" I don't have to serve you, you can go, GET OUT \" On the scale of 1 - 10 regarding professionalism, on 4/23/23, I would say -5. If you can't keep your composure on something that BASIC and SIMPLE, then WC will have problems keeping their customers!!!!\n\nNow, lets discuss their new manager (Dionte). Last year Jan 2022, I purchased a range membership @ WC. The course went through renovations sometime around May. I may be off with the month. My point is this, the course was closed for 3 months!!! Meaning, we payed for membership and couldn't use the course!!! I'm still waiting from WC management to explain to all their members about those 3 months we couldn't access the course or the range???\n\n4/29/23 I (EJ) reserved a tee time to play WC @ 4:15pm est, for two people (EJ, Mr. Barnes). Me and Mr. Barnes arrived there on time to check in. And once again, we experience HORRIBLE customer service from WC customers service rep. Her name is Denise!!! Their was another young lady working with Denise. She was on the phone with a customer. Mr. Barnes and I waited patiently as Denise sat there refusing to assist us while the other rep was on the phone. Another gentleman showed up  check in. He was white and Denise IMMEDIATELY asked him \"Can I help you sir\" Mr. Barnes stated \"excuse me, we are here waiting\" Denise IMMEDIATELY stated \"I'm NOT here to SERVICE you sir\"\n\nSo we waited for the young lady to finish up with the customer she was assisting over the phone and she assisted us with no problem. The BLAME here is WolfCreek Management!!!To have someone like this around treating customers with no respect is HORRIBLE!!! And WC Management is the BLAME!!! As I walk out to grab a cart, the white gentleman stated \"What was that about?\" He stated, that was \" Very Awkward\" I smiled at him and said \" Yes it was and it's ashame that WC Management encourage their employees to treat customers like this\" The same customers that pay their salary!!! It's VERY OBVIOUS that WC Management will hire ANYBODY with NO customer service skills!!!! Mr. Barnes and I have played this course for MANY YEARS and it's ashame that WC Management would allow this to continue to happen 2 weeks in a row!!! And from my understanding, we are not the only customers to face issues with Denise!!!!!",
+      "published_at": "2023-04-30T16:04:37.348000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fd532e01cfa0d2da4764",
+      "rating": 1,
+      "text": "This course was such a nice course, that’s why I was surprised to see how far it has fallen. I love this course that’s why I’m reviewing it in hopes that the powers that be will take action and fix the many issues.\n\nI played nine holes recently and the first thing that i noticed was that the fairways were extremely patchy and dry.\n\nThen I went to hole number two and I couldn’t believe it ,the tee box was literally just dirt no grass. At this point I thought wow this course has fallen off, but more was to come.\nwhen I got to the green I noticed how diseased and patchy it was, this problem with the greens and fairways continued through out the front 9. I didn’t play the back, so I can’t comment on that. After talking to the workers at the course, management has been ignoring the problems.\n\nI spoke with the general manager, and he said that the problems will be addressed soon, but the workers said that, he has been saying that for some time now. Let’s hope that improvements will be made soon, because at the cost of 40 dollars per round (weekday), wolfcreek is no longer the gem that it once was, and not worth the greens fee.",
+      "published_at": "2023-04-18T03:38:00.011000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9de6c012f9cc9c803295",
+      "rating": 4,
+      "text": "",
+      "published_at": "2023-04-17T01:16:15.316000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_715a1ac5334d3a5f8bc5",
+      "rating": 5,
+      "text": "",
+      "published_at": "2023-04-01T23:25:55.669000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_10a09345140f2e7c2802",
+      "rating": 2,
+      "text": "No rangers. Was stuck behind  A FIVESOME.",
+      "published_at": "2023-03-30T11:47:19.218000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1ce6cd4450a6c993b534",
+      "rating": 3,
+      "text": "we had a good time here",
+      "published_at": "2023-03-27T23:48:18.494000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_991482ee9bd69dec2cae",
+      "rating": 4,
+      "text": "",
+      "published_at": "2023-03-21T20:35:12.245000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_23f24a98cc8c11d7cfc4",
+      "rating": 5,
+      "text": "Just filmed there.  But had lovely facilities.",
+      "published_at": "2022-12-18T23:47:28.729000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4b917349d261d5c931e8",
+      "rating": 5,
+      "text": "Great round this morning green great shape",
+      "published_at": "2022-11-13T21:26:22.727000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a9726176bcc627b95e77",
+      "rating": 4,
+      "text": "Course was in good shape of course the grass is brown due to temperature change.  They need a Ranger on the course.  We got behind a group of 3 guys, none of which likely broke 95 and they wouldn’t let a 2 some play through.  17 holes and we waited every shot",
+      "published_at": "2022-11-07T03:44:06.813000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_11c878502324efbf109f",
+      "rating": 5,
+      "text": "Played this place earlier this year when ownership was being transfer and it was in rough shape. you can tell that the new owners have been putting in a ton of money on the right things to make it better! new Bermuda greens were rolling fast and have grown in nicely, by next summer they should be pure. they are making moves to rescue some of the hardpack tee boxes and bad fairway areas. worth playing for the fun routing of this course and i cant wait to see how the conditions progress",
+      "published_at": "2022-11-04T19:19:42.115000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a59efee729e470c8d3b1",
+      "rating": 5,
+      "text": "This place is absolutely beautiful! My family and I play here at least twice a week with No Regrets!",
+      "published_at": "2022-10-22T02:14:58.343000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6291e4cf866e26db67eb",
+      "rating": 4,
+      "text": "So,Wolf Creek has been in our \"rotation\" for years. Just recently they replaced their greens. Well.......it's BAAAAACK!!! The fairways,bunkers, and NOW greens make this a must play. HANDS DOWN,the best public course within 285.",
+      "published_at": "2022-10-13T11:55:24.583000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a9fe100ed3b833d6589f",
+      "rating": 5,
+      "text": "New greens are rollin very nice.",
+      "published_at": "2022-10-12T12:15:38.537000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e1fb9a34970c1e136fc0",
+      "rating": 5,
+      "text": "The Wolf Creek golf course was amazing I was there for a special event for the Jardine foundation for children with autism and they did such an amazing job hosting this foundation wonderful people there like the mayor of Atlanta and other Mayors within Atlanta as well it was a wonderful experience and the staff was pleasant and kind and a place was clean the one thing that I did see that needed some attention is in the front of the venue after the big step either going up or going down mostly stepping down there is a dip in the cement bricks that can be dangerous which I did see a family member trip and get scraped up so if you do go there be careful when you step down the big step coming out cuz there is a dip that is notable.",
+      "published_at": "2022-10-07T20:26:11.021000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a876a113ed33d2c54c59",
+      "rating": 5,
+      "text": "",
+      "published_at": "2022-09-29T00:30:30.943000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ed87b9217ca9fefb1372",
+      "rating": 4,
+      "text": "Great place to play with the upgraded greens",
+      "published_at": "2022-09-20T21:56:36.873000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_26494c42bb378b83311c",
+      "rating": 5,
+      "text": "",
+      "published_at": "2022-09-18T23:32:33.163000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_611f0ad478eedd6a927f",
+      "rating": 5,
+      "text": "",
+      "published_at": "2022-09-02T15:38:10.658000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7a98e194e0c6990dd495",
+      "rating": 1,
+      "text": "The greens were absolute trash - ownership has completely lost them. Not sure the new owners know anything about running a golf course. Only positive is the cart lady, April.",
+      "published_at": "2022-07-27T01:31:57.187000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_27f61e926ffa5c7633b2",
+      "rating": 3,
+      "text": "업앤다운코스, 도그렉 홀 다수..\n여기저기 보수가 많이 진행되고 있다.\n클럽하우스가 없는것이 아쉽다",
+      "published_at": "2022-07-23T17:18:33.564000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f11d08059ce45f9c87da",
+      "rating": 1,
+      "text": "Stay far far away from this place!  Pictures speak for themselves… no notice at all of such terrible conditions. Drove over an hour to play here.  Greens were simply unplayable.",
+      "published_at": "2022-07-23T12:39:01.983000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_74dc501d4d2c0485ae24",
+      "rating": 5,
+      "text": "One of my favorites in the Atlanta area. Course is usually in pretty good shape and the lay out is a lot of fun.",
+      "published_at": "2022-07-19T15:42:55.960000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3c30dc1105446c96a59b",
+      "rating": 1,
+      "text": "Around a year and a half ago, this was one of my favorite courses in Atlanta area. It’s gone WAY down hill. The greens were just sand and dirt. I can’t make this up there was literally NO grass on the greens. I can’t believe this place can actually be open in this condition. What a shame because it used to be beautiful... not to mention the pace of play was SLOW. To top it all off, they no longer serve beer to be able to drown your sorrows after spending 5+ hours on a round to have to try putting in dirt.",
+      "published_at": "2022-07-18T13:38:21.429000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_91f889f9aa4b0234a919",
+      "rating": 3,
+      "text": "Greens need work. Overseeding",
+      "published_at": "2022-07-15T22:52:52.196000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b0e590342692df73e5af",
+      "rating": 1,
+      "text": "Awful shape after it’s under new management. No liquor license, so no beer on the course. Only 9 of the 18 holes are open which wasn’t mentioned on Golfnow. Check out the pics for the deplorable greens that they’re playing! It wouldn’t be worth $10 let alone ~$50",
+      "published_at": "2022-07-13T22:28:38.157000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4f0e329ad28bea3866e9",
+      "rating": 1,
+      "text": "The worst golf course that I've ever played. All the greens were brunt up, just mostly sand and dirt, no grass at all. It is a waste of time and money to play this course.....",
+      "published_at": "2022-07-10T03:20:20.094000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3177c6a855c10ba8c653",
+      "rating": 1,
+      "text": "Worst golf experience in Atlanta. Course is in horrible shape, especially the greens. They are similar to the fairways in that the grass is long and there are TONS of patches of no grass. They should be charging $15 for the shape of the greens. Clubhouse looks like a dorm room that someone just moved in to. Nothing on the walls just a bad setup. Pace of play is a huge issue. I'm not sure why they are letting 5 and 6 person groups but it slows everything down. Worst part is the staff. Playing hole 16 a female Marshall drives by as we on getting off the green and proceed to go to the next 17th tee and start playing the hole in front of us. It is 830pm we are fighting the light and an EMPLOYEE of the course cuts us off. She hits a tee shot and sits in the fairway waiting for the group in front of us. I approached the woman and asked what she was doing and that she cut our group off and she tried to play it off like it wasn't a big deal and our group should be patient. At no course should the employees cut off the customer who is trying to finish playing. Just a horrible course/experience not going back will actively tell poeple to avoid this dump.",
+      "published_at": "2022-07-07T01:37:21.586000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7dbec647acf99926c3d9",
+      "rating": 1,
+      "text": "This place has really gone down hill. Greens are in terrible shape, carts are dirty, pro shop doesn’t have much, they don’t have their liquor license, and they are expensive. This used to be one of my favorite places. I won’t be back until they invest some money in the place.",
+      "published_at": "2022-07-03T16:47:32.223000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_bec3cdfd2a1400d27cc3",
+      "rating": 2,
+      "text": "This golf course is not good. We made tee times and when we got there they stated air raiding the back nine without telling use and charged the same price. Pace is slow and the Marshalls sit around at the club house. Only food they have is chips and soda.  Will never go back",
+      "published_at": "2022-06-07T02:47:17.002000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_74e5475d0e220b8ec4a5",
+      "rating": 1,
+      "text": "$45 for the front 9 back to back, and they’re aerating, which no golf booking app will tell you, so STAY AWAY from this place for a few weeks, and don’t play Thursday mornings",
+      "published_at": "2022-06-02T16:12:05.247000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ddce9ef03ece5361ecf9",
+      "rating": 5,
+      "text": "I stumbled on this course. It's a great track, good rates and great people. Ask for Cliff!",
+      "published_at": "2022-05-16T18:21:10.558000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c257dd318905a23190e2",
+      "rating": 5,
+      "text": "Great service and fantastic greens!\nCliff was super helpful and welcoming, the green fees are very budget friendly, and the course is well maintained. Best round of golf in a long time👍🏼10/10",
+      "published_at": "2022-04-28T23:59:07.686000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_02a34b4c2ca4a8c305b4",
+      "rating": 5,
+      "text": "",
+      "published_at": "2022-04-24T22:50:37.454000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b5ae088ce7f06cce7463",
+      "rating": 4,
+      "text": "The course has a great layout. We happen to catch after a major rain storm, so it was cartpath only. Denise in the Pro shop was awesome!",
+      "published_at": "2022-04-08T13:51:05.603000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6df9662ceabf9539e99e",
+      "rating": 2,
+      "text": "Bad clubhouse. Unkept course. No booze. Barely any rental options, we were missing clubs in our rental.\n\nThe layout of the course is alright, and maybe at one time it was nice, but not currently at the writing of this review. They lacked signage, and there are a lot of weeds in the course.\n\nIf you go here, BYO everything..\n\nWe were also rushed by the marshal even though we were waiting on the people in front of us. He told my wife that she needed to hit from the women's tees so we could speed up. She wasn't even playing at this point, just relaxing and enjoying the day. I thought this was super odd...\n\nI don't think we will be going back here, maybe check it out in a couple of years, but definitely not now.",
+      "published_at": "2022-03-25T23:15:55.788000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_74989d847e34b1450dcd",
+      "rating": 5,
+      "text": "Great course.  Greens are great.   Fairways tight. Will definitely recommend this course for anyone who wants a challenge.  Customer service started the round of great golf.  Warm welcome from denise at the front counter.  The starter and marshall were both very user friendly.  Shout out to Wolf Creek.   HOOAH!!!!",
+      "published_at": "2022-03-25T22:12:00.656000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_812d86c7f30168c9dfb4",
+      "rating": 4,
+      "text": "Just played my first round at Wolf Creek. Staff are very friendly. I enjoyed the course layout. Some very challenging holes due to length and hazards. Greens were generally really fast. Only complaint was the slow play. Groups ahead of us were taking way too much time and no one came out to get them to move along.",
+      "published_at": "2022-03-22T12:03:21.086000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_719321d246b0326fc31e",
+      "rating": 1,
+      "text": "This used to be a fun, challenging course and provide great value for your money. Shamefully, it’s nowhere near what it used to be. It’s rundown, in terrible condition, and highway robbery at $60/round. The driving range is atrocious and has no yardage markers or grass. Worst of all, the course is way overbooked and management does nothing to alleviate back ups on the first tee. Realistically, you’re looking at 5-6 hours to play 18 holes. The new management team is clearly incompetent. Do yourself a favor and save your money. Much better courses north of Atlanta that provide better value for your money.",
+      "published_at": "2022-03-22T01:50:52.702000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8965182b5226cd156c30",
+      "rating": 1,
+      "text": "Had a tee time at 11:40am. Sunny day, just cold (35*). The gates were closed and we didn't even get an email, text, call that the course would be closed. Very frustrating after driving 30 mins.",
+      "published_at": "2022-03-12T16:19:48.537000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_80da6aa8556ba8029157",
+      "rating": 5,
+      "text": "",
+      "published_at": "2022-03-07T03:16:36.426000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_02cc7a9637e5ffa1a727",
+      "rating": 5,
+      "text": "Fabulous greens",
+      "published_at": "2022-03-03T20:25:00.054000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_21c1ad1360ef7848e7bf",
+      "rating": 3,
+      "text": "Played this course for the first time. My BIG complaint is with the greens. They are very slick!  And due to the pin placements on a number of the holes, it was very difficult to stop the ball...at any speed...to have a reasonable cleanup putt! Not the type of penalty a recreational golfer needs! Please take that into consideration!",
+      "published_at": "2022-02-17T22:01:32.818000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_741adf3cbcf58932b439",
+      "rating": 5,
+      "text": "Cliff & Carl were awesome! Great Marshalls and extremely welcoming. The course was in great shape. The greens were as quick and tough. Great gem of a course!",
+      "published_at": "2022-02-17T13:27:15.701000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_094915038b4c1a7e9216",
+      "rating": 4,
+      "text": "This is a beautiful piece of land. Great layout—challenging closing holes.",
+      "published_at": "2021-12-18T14:58:36.586000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_bf9f275c3748c96c5fa7",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-10-27T15:25:11.633000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_dadf2881949f9f7e9b90",
+      "rating": 5,
+      "text": "5-star service, 5-star course,\n\nAnd 5-star nostalgic experience (this course was featured on “PGA Tour 2K??”)",
+      "published_at": "2021-10-26T20:04:22.824000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_13e6437c29ae203efbb8",
+      "rating": 4,
+      "text": "Need work",
+      "published_at": "2021-10-24T17:50:40.322000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c3c11944c096c87599a9",
+      "rating": 5,
+      "text": "Stocked clubhouse, friendly service, food and bar is open on weekends. Unsure if they serve liquor but they serve beer\n\nCourse is tough, especially when the rough is up. Shorter par 4s that you don’t need much club off the in order to play well but the course makes up for it with smaller greens. I play here often and will play here again",
+      "published_at": "2021-10-12T04:58:32.115000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1423ad8b5612eeca5840",
+      "rating": 5,
+      "text": "Inviting staff and a great time overall.",
+      "published_at": "2021-10-09T00:24:05.318000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f74da409296d05d11754",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-09-26T19:48:10.389000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_cbd7ddbfe41945c3e7de",
+      "rating": 4,
+      "text": "",
+      "published_at": "2021-09-19T23:56:20.550000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d1d8b70f5f7696800f57",
+      "rating": 5,
+      "text": "Course is in good shape for this time of year.",
+      "published_at": "2021-09-11T22:00:10.788000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_00d3d6958521a26b0e7e",
+      "rating": 5,
+      "text": "I absolutely love Wolf Creek. The staff are incredibly friendly, helpful, and understanding of the challenges that come with being a new golfer. The course is very well maintained and is gorgeous to play on.",
+      "published_at": "2021-09-07T21:27:06.569000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_62d53267d811db29295f",
+      "rating": 5,
+      "text": "Great shape. Really fun and challenging track. The greens generally roll true - need more people to clean up their approach shots.",
+      "published_at": "2021-09-05T21:02:46.621000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_41429b1eed8c31315795",
+      "rating": 4,
+      "text": "Played Wolf Creek Golf Club 8/28/2021. Have enjoyed playing this course many times since its opening. Today wasn't one of the better days. At the turn there were six (6) golfers in the middle of the fairway and the marshal would not give an explanation. You can tell how the back nine went.",
+      "published_at": "2021-08-28T17:15:37.454000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4656ab76c47ccfe6e020",
+      "rating": 2,
+      "text": "I played here today. This was a course that use to be well kept. I brought some friends here today from out of town and i was so embarrassed.  The driving range OMG...nasty marsh with high grass..the range balls were old and dengy.  No water cart, no water on the course, the golf cart had trash in it and was dirty...I called not for money back but to ask why these conditions..I was told the manager was in a meeting. I will take this rating down if he calls back.  Very dissapointed that i passed serveral golf courses to come to this one..The staff was very nice though have to admit.",
+      "published_at": "2021-08-25T21:25:09.473000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3770d3efb635daeb8329",
+      "rating": 5,
+      "text": "My buddy and I went to Atlanta for a few Braves games and decided to play a couple rounds of golf while there. We had a great time playing at Wolf Creek. The course was challenging but well worth it. The staff was friendly and very accommodating. Next time we go to ATL, we will be sure to play this course again. Well worth the price!",
+      "published_at": "2021-08-07T00:33:23.951000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_63fde5ee538921ebfc0a",
+      "rating": 3,
+      "text": "The driving range is closed.",
+      "published_at": "2021-08-03T20:29:56.491000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9e4af57cf4aea37429c9",
+      "rating": 1,
+      "text": "Worst golf course in the state. Today was  first time playing here. They’re driving range was closed because they said they ran out of balls. How do you run out of range balls? All you do is recycle them. They have no 150 yard markers. Course is poorly maintained. Tee boxes are hard, kept breaking my tees. I brought 3 of my friends from out of state and felt embarrassed bringing them there. I would not recommend anyone playing here. They need to shut this place down immediately. This course is nowhere near whether $60 dollars. They don’t even have 9 hole rates. This place sucks.",
+      "published_at": "2021-08-01T19:49:43.656000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c56e2fba3937511f34ec",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-07-20T00:25:07.405000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_877fbcfa8e751d380f2c",
+      "rating": 4,
+      "text": "",
+      "published_at": "2021-07-09T23:00:36.956000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7b744bd36d166f4d3fad",
+      "rating": 3,
+      "text": "Course is in good shape, but the greens are VELCRO. You have to use a 3 wood to putt. They used to have some of the best greens in Atlanta , so I would fly in & go there 1st, now I go to crystal lake or spivey, then Wolfe creek",
+      "published_at": "2021-07-03T09:56:47.031000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_dc53f9915b7ff3ea11a1",
+      "rating": 1,
+      "text": "Too Slow moving",
+      "published_at": "2021-06-27T19:43:04.141000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_884f1a4e4b7c4b13d9df",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-06-26T19:16:55.702000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a518f54e524961b9ca52",
+      "rating": 4,
+      "text": "Great course. Greens are really slow, but in great shape. I imagine they would be faster when cut. I will play there again.",
+      "published_at": "2021-06-15T17:56:39.358000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0f16bfa50ed2d0a046b9",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-06-13T18:39:59.451000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e22eebfd9b4fb67e6c25",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-06-11T23:07:33.486000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_57944daf67a813a3ee95",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-05-03T01:34:08.581000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_771fe3a9e8bd17d58323",
+      "rating": 4,
+      "text": "",
+      "published_at": "2021-04-26T17:53:45.232000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fcb87da52a596f6fca70",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-04-16T10:17:50.358000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_bfb447bfaf8a4c32f63b",
+      "rating": 5,
+      "text": "Cool course, friendly and helpful staff!",
+      "published_at": "2021-04-10T14:27:10.887000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_52ca194b05dcc256ca06",
+      "rating": 5,
+      "text": "",
+      "published_at": "2021-04-09T00:00:51.157000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_64ad2d43894767ba13db",
+      "rating": 4,
+      "text": "Good times",
+      "published_at": "2021-04-06T19:46:07.617000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9f4db1488aab0437f801",
+      "rating": 4,
+      "text": "Fun course. Greens are in pretty good shape. Pace moved along nicely. Friendly staff inside and out.",
+      "published_at": "2021-04-06T19:39:10.842000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_eeae5a06a3c512030705",
+      "rating": 2,
+      "text": "The Course certainly has potential.  It was a great place to play but I played here twice in the past year and the keeper around the greens let the crabgrass grow grossly on the fringes.  It looks and feels terrible.  The upkeep around the club house looks as if they left the party mess behind from the night before.  Fire pits spilled over and chairs in array.  Who took over I don't know but you can see that it was a change for the worst.",
+      "published_at": "2021-04-01T14:00:55.675000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_cefeed49d20639044e79",
+      "rating": 5,
+      "text": "Fun course, great staff, well kept.",
+      "published_at": "2021-03-29T20:32:14.315000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8806688fbba5365e1f59",
+      "rating": 5,
+      "text": "Great course, have played the back tees twice here and it's a challenging course. Very forgiving fairways and the layout is really interesting.",
+      "published_at": "2020-11-26T22:56:23.448000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_6354bc94877e12ed54db",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-11-25T23:16:26.359000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1e6d4121e13e07e5ce64",
+      "rating": 4,
+      "text": "",
+      "published_at": "2020-11-19T01:25:09.232000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_267881147cb489acb807",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-10-24T17:33:16.036000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f36e41f0783a854501ba",
+      "rating": 3,
+      "text": "The course is a little hard to navigate. The ruff needs cutting you will lose your balls in it. With a little upkeep/maintenance it could be better..",
+      "published_at": "2020-10-19T03:22:07.301000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c07fc95cd5b541425787",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-10-17T22:44:02.280000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_019ab57411119a083daf",
+      "rating": 4,
+      "text": "nice course, pro shop and deli could use some work. Also yardage markers would be helpful. overall fun, challenging course. The greens are deceptively tricky.",
+      "published_at": "2020-10-06T12:27:49.967000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a91512a0a8d36780a35c",
+      "rating": 1,
+      "text": "Course is not all kept up and staff is very unfriendly. For the price it's not worth it.",
+      "published_at": "2020-09-19T23:34:48.221000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_527f9ba1ff788195f400",
+      "rating": 1,
+      "text": "Save your money until the course gets back in shape. Played on 9/8 and it was in as bad of shape that I have ever seen. Fairways were covered in mowed grass and the rough looked like they were preparing for the U.S. Open. Several greens were also in disrepair especially on the back nine. Disappointed that the course was in this kind of shape and they were still charging the $60 weekday rate.",
+      "published_at": "2020-09-09T14:06:22.427000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_84e5cf6e2ce4c4ab8661",
+      "rating": 2,
+      "text": "",
+      "published_at": "2020-09-07T19:15:12.876000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2b0620963207c4a70381",
+      "rating": 1,
+      "text": "The course is in terrible shape and not worth the $75 cost. Our tee time was at 820 and there were no range balls available. The greens weren’t mowed. The fairways were thick and there was so much crab grass and weeds throughout the entire course. You can tell the management doesn’t care. Will never play that course again.",
+      "published_at": "2020-09-06T18:08:25.377000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_968632f173dde98c2aeb",
+      "rating": 4,
+      "text": "I always have a great time playing at Wolf Creek Golf Course. It’s the best Golf Course on this side of town.",
+      "published_at": "2020-09-02T00:53:08.726000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c427be16526298ede017",
+      "rating": 4,
+      "text": "",
+      "published_at": "2020-08-10T01:48:27.937000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_62a373e879c0b5c54ab7",
+      "rating": 2,
+      "text": "Unfortunately did not get to play so i cannot comment on the condition of the course.\n\nCalled ahead to see if there were twilight specials so i could try to get out after work. Was informed of their Twilight at 2pm and Super twilight at 4pm.\n\nAfter 4pm i was told $35 for 18 holes. I also asked what the rate was for 9 holes and was told $18.\n\nUpon arrival i went to pay for 9 holes. Not sure if the lady working was miss-informed or if their pricing model needs a serious review, but i was told that to play 9 holes it would be $44 or i could pay for 18 holes play 9 and pay the $35 rate.\n\nEnd of the day I did not play and went to another course.",
+      "published_at": "2020-08-06T14:10:58.129000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9a827a1b1d9d38038744",
+      "rating": 5,
+      "text": "Great course and tough. Long holes that require long carries. It'll beat you up if you're not having a good day. It gets even harder it it's wet. Your likely to see some animals- deer, beaver, foxes. One of the best courses closer to the city.",
+      "published_at": "2020-08-01T17:14:43.851000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_641a143f8d0cf680a98e",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-07-30T22:19:55.090000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5f42caa166eb77cacdfd",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-07-25T21:11:33.893000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fbc5ff90fe34039e6679",
+      "rating": 4,
+      "text": "Nice course a bit over priced",
+      "published_at": "2020-07-15T21:21:34.050000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d4440b489d5d1b1d8b1c",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-07-15T14:06:28.737000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3352cdb04b3651e52cca",
+      "rating": 5,
+      "text": "Great layout, course conditions, and friendly staff.",
+      "published_at": "2020-07-14T20:30:20.660000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8ac71d334c7e7f1d7d97",
+      "rating": 3,
+      "text": "For $75 the course should be a lot better. Tee boxes were like low cut rough and the greens were full of ball divots. Pace of play was about 4:45.\n\nThe beverage cart woman does a great job! Very personable and see her about 2-3 times per 9.",
+      "published_at": "2020-07-12T20:29:41.571000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_57ed3b0b6f853a2509aa",
+      "rating": 5,
+      "text": "Like this course!",
+      "published_at": "2020-07-10T00:58:24.278000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_379a41b2fe5cc9374caa",
+      "rating": 4,
+      "text": "",
+      "published_at": "2020-07-08T12:50:59.526000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8e8d5955c01e5187292c",
+      "rating": 5,
+      "text": "Awesome golf course. Great views and always in good shape.",
+      "published_at": "2020-07-06T20:10:00.722000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_088e648874d7fce41918",
+      "rating": 5,
+      "text": "Excellent course",
+      "published_at": "2020-06-22T20:31:05.534000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c2c2a8c80bbab14cf6b6",
+      "rating": 5,
+      "text": "I only used the driving range and putting green. Staff were really nice and range balls were in good shape. I'd definitely go back there again and I might be interested in playing the course. Looks nice from the clubhouse.",
+      "published_at": "2020-06-15T23:28:40.083000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b224cf0242bc353c6076",
+      "rating": 4,
+      "text": "I was pleasantly surprised by how nice this course was. The green were nice and the par 4 were my favorite.",
+      "published_at": "2020-05-28T14:56:23.612000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_412960dd60b82fae6393",
+      "rating": 1,
+      "text": "Course is nice, but over booked. I just played a round of golf that took over 3 and half hours to play ten holes because of how over booked the course was. We had to wait 10 minutes at every hole to tee off. It was so bad we just packed it up early. We couldn’t get in contact with a manager or anyone to get a  rain check or Marshall.",
+      "published_at": "2020-05-09T22:49:33.047000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_bd46a1a3c4f67396d010",
+      "rating": 1,
+      "text": "I've played this course many times in the past and it was in much better shape but now it has gone way downhill.  Finding yardage markers was like trying to find your ball in high grass, almost impossible.  Course was poorly maintained with only the greens being pretty good.  Everything else about the course was disappointing - pace of play, pro shop and food, price, yardage markers.  Play another course and you will be much happier.",
+      "published_at": "2020-05-07T12:27:33.246000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_7bc550af77730bb5ab8a",
+      "rating": 4,
+      "text": "",
+      "published_at": "2020-03-11T23:04:01.585000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9cab2d7be9e94c9263d9",
+      "rating": 5,
+      "text": "",
+      "published_at": "2020-02-22T03:51:16.088000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_3fed187eb2617d8a329a",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-12-25T00:46:35.057000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d4e6db1c4934aa8944f3",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-12-12T21:57:21.365000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9ea7862b34bf50c2db86",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-11-21T14:16:24.844000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0fd18e618c9d54949995",
+      "rating": 4,
+      "text": "Greens were fast and in great condition. Roughs were rough! Beautiful day to play. Was slow due to Veteran's Discount, but no complaints.",
+      "published_at": "2019-11-11T21:54:17.419000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ba28f5faa66edfaa1c30",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-10-18T20:31:44.116000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ec1c3db6521e5f69400e",
+      "rating": 4,
+      "text": "Very friendly staff. We had a fantastic outing.",
+      "published_at": "2019-10-06T14:28:24.127000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_34bc648d494af9485e98",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-10-04T12:19:53.163000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4cb5dd793f359ffa206b",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-09-30T19:21:01.406000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_67a06e2f7757de76be07",
+      "rating": 5,
+      "text": "I had fun",
+      "published_at": "2019-09-24T13:11:54.941000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_dab6952e925754dadbbf",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-09-21T18:44:10.341000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5c2febfa77d87d0948ce",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-09-07T21:22:21.695000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9118e11fd0aebe1fa8c4",
+      "rating": 4,
+      "text": "Great place to play",
+      "published_at": "2019-08-13T18:45:42.330000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_93043f0a194718ad9f94",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-08-02T20:26:43.861000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9c334ae9cbefbb3ccda3",
+      "rating": 3,
+      "text": "Very tough course.  Had a hard time finding balls even in the first cut of the rough, and extremely difficult to hit out of the rough.  I've played it several times and each time I wonder why I did.",
+      "published_at": "2019-07-29T00:02:03.371000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f5c9174f399644346b1c",
+      "rating": 5,
+      "text": "Great hidden gem",
+      "published_at": "2019-06-26T17:01:20.643000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f8acc6d784e28a925792",
+      "rating": 5,
+      "text": "Great golf course.  I am from Los Angeles.  I was impressed with this one.  Greens are great.  Maintenance is up to par.  Will play here again for sure.  Challenging course.  Rental set was pretty good for $15.  Friendly staff",
+      "published_at": "2019-06-21T05:39:22.606000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1237dcc3b42735747934",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-06-18T11:39:58.202000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ced41c1c238e8c70b826",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-05-21T14:10:44.792000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ae0dd76d6ef520a4cd08",
+      "rating": 5,
+      "text": "",
+      "published_at": "2019-05-20T15:53:44.732000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fad3556aca68163bd52b",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-05-18T23:41:13.267000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_cddbc121d6e0869b2cb1",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-05-09T17:55:44.888000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_299d9d99fe3bf1131ae3",
+      "rating": 4,
+      "text": "Nice layout,well maintained. Gave 4 stars because they areated,but did not offer any discount.",
+      "published_at": "2019-04-18T18:25:46.317000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b0aa4d35a56770f1f986",
+      "rating": 4,
+      "text": "",
+      "published_at": "2019-04-16T13:05:39.876000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c9010a60f8b8770a37f3",
+      "rating": 5,
+      "text": "This golf course was incredible a true delight.",
+      "published_at": "2019-04-12T19:12:23.449000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b687de7acd1b6b81386a",
+      "rating": 3,
+      "text": "Only front 9 opeb today so we agreed to play the front 9 twice but on the turn apparently there was tee time already scheduled during our anticipated return to the first tee. So then of course the team with the tee time doesnt want us to tee off in front of them",
+      "published_at": "2019-03-21T21:02:18.436000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ec5565a4e4bd62671d53",
+      "rating": 5,
+      "text": "Amazing course! Short but precise. When I played it was in great shape, greens, fairways, tee boxes. It’s hard to find a course like that in the winter months",
+      "published_at": "2019-01-29T13:08:40.169000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ea34d4b46385c84c3434",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-12-26T23:28:06.972000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_9cde9f03e8a05da24214",
+      "rating": 4,
+      "text": "",
+      "published_at": "2018-12-26T18:48:15.124000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_942b828c68e44aadd6c4",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-12-05T22:10:15.040000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2369d3eb69d5ad3b9d9c",
+      "rating": 4,
+      "text": "Great golf course... really good condition and a fantastic layout",
+      "published_at": "2018-12-01T00:18:15.822000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_de9d209ad1f9f8a3ae60",
+      "rating": 4,
+      "text": "Great course nice greens layout is spectacular",
+      "published_at": "2018-11-25T01:46:43.397000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a87677c91c5e2bee91da",
+      "rating": 1,
+      "text": "Last few times I have been here has been worse and worse. Horrible attitude at the register from management. Range is always closed due to some kind of drainage problem. Range should always be an option at a golf course, won’t be coming back again.",
+      "published_at": "2018-11-03T21:15:21.179000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8ecfe83d494bbc907ffe",
+      "rating": 4,
+      "text": "Course is wide open fair to play, but the greens are very small have to land on a postage stamp. Good fun the water is no trouble.",
+      "published_at": "2018-10-18T20:38:16.410000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5488b533e269515e40ad",
+      "rating": 2,
+      "text": "The whole round I found 1 yardage marker. No 150 markers, no sprinkler head markings, nothing!\n\nGreens were also beat up, slow, and inconsistent.\n\nThis course has good bones, but in it's current state, not worth playing.",
+      "published_at": "2018-10-12T00:17:56.274000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_49263b5c176b0ea20e92",
+      "rating": 2,
+      "text": "",
+      "published_at": "2018-09-21T11:48:19.831000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_df3ef814ee174c43f518",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-09-12T22:24:51.247000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_20537ef02e1ab4f52866",
+      "rating": 1,
+      "text": "ROBBED! (Update)\nFirst the good. The course was green, had nice elevation changes and they had cold drinks in the clubhouse. That's about it.\nThe bad. After completing my round which was wrought with frustration at the lack of any yardage indicators beyond the tee box, and no functioning GPS units in the carts, I returned to the parking lot to discover that my truck window had been smashed and articles stolen from my vehicle. The staff called the police for me and I did my best to calmly wait for them. Upon arrival I learned from officer that this happens 5 TO 6 TIMES A WEEK THERE!!! Let me repeat that again. IT HAPPENS NEARLY ONCE A DAY!!!! I am at a loss to understand how a place which has half a dozen or more security cameras around the (small) parking lot and hired a \"marshal\" to patrol the lot has this happen. The \"marshal\" said that what happened to my truck must have happened while he was on lunch. *reckless speculation disclaimer waiver *  I have to wonder if the staff isn't in on this. How can they hire someone to watch the parking lot, have multiple security cameras pointed at the grounds an this happen multiple times per week. Another questionable point is that I learned that management hasn't turned the video from several of these recent thefts over to the police. Now again I have no proof of this at all. This is just my logical mind putting 2 and 2 together and getting 4. FYI this occurred between 2:00 and 4:30 pm on a Saturday.  If you know you have a problem with vehicles being broken into why not have adequate staff to watch the parking lot. At $74.00 for 18 holes I think they could afford to hire someone.\nSo I won't be back. If you do go for the golf I hope you bring a rangefinder and take adequate precautions to hide all your valuables out of sight and certainly lock your car.\n\nUPDATE:  So after a week on the phone, a dozen phone calls and the \"this isn't in my control you need to speak with XXX\" runaround, it appears that the video evidence (which exists and I was told shows the break in and the theft along with the car they drove away in) wasn't and won't be sent to the police. I don't understand that. Why wouldn't they send it? Corporate says that is up to the local club. The local club says corporate has to do it. Regardless I know there was a 0% chance that I ever get any satisfaction on this, but I am disappointed in the people I had to deal with here.",
+      "published_at": "2018-08-22T15:25:58.939000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2e47666ce1bc6cce5e03",
+      "rating": 4,
+      "text": "",
+      "published_at": "2018-08-15T23:11:53.631000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c1f733e266befd6950c6",
+      "rating": 1,
+      "text": "Over priced and mismanaged",
+      "published_at": "2018-08-08T15:37:09.383000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_439efd92009a75af86c2",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-07-15T12:39:02.930000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_78cf88f0d1f205128cd7",
+      "rating": 5,
+      "text": "Very well kept course that's fun but also challenging. Def recommend",
+      "published_at": "2018-07-13T02:30:21.339000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_810dc4fa3f8423a6d5d3",
+      "rating": 3,
+      "text": "I'm not a big fan of the course. It is extremely wide on the front nine and the back kinda tightens up again but plays very long from the tips. Driver and long iron in. The clubhouse is alright and the staff is somewhat friendly. The cons about the course is of course the location. It's in the middle of no where and Cam Newton grew up near by so definitely a negative. Another con is the horrible placements of the 1980's GPS machines that take up half the cart. It was my dad and I and the GPS robot that sat in the middle blocking my beers. You don't think this matters, well play a few rounds and you will be on my side. Nothing at this course has the wow factor. Oh, it is all bramuda grass so don't expect much roll and slow greens. It's long so make sure you get the ball to the hole.",
+      "published_at": "2018-06-23T00:30:11.846000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a6bb8ca6c9891f3e536d",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-06-21T16:33:37.917000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_46a890059a4d3d81fe3d",
+      "rating": 5,
+      "text": "",
+      "published_at": "2018-06-14T02:22:32.032000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4a4146904fed997d0ac0",
+      "rating": 5,
+      "text": "Good track. Fairly consistent as far as course shape. The people here do a good job of maintenance. The cost is a bit high but check the normal online tee time discounters and you can find good deals.\nThe idea, someone mentioned in another review, that this course is in some bad neighborhood is a bold face lie. Crime, statistically speaking, is lower than the area surround more prominent courses inside the city of Atlanta. Not only that but the course is surround by woods and has a very secluded feel with the exception of an upscale golf housing development (this can be seen if use Google maps). Many prominent people frequent the course and grew up not to far from the course including Cam Newton and Kasim Reed (former Atlanta mayor). Like anywhere else in the world, if you leave things visible in your car you face a potential break-in. The moral here is don't be stupid and leave things out in plain sight because if people don't see it then they probably will not decide that they want it.",
+      "published_at": "2018-05-11T19:21:33.378000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0a670192190c9cec9135",
+      "rating": 5,
+      "text": "Great greens",
+      "published_at": "2018-04-29T14:40:44.322000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0afa6b01f2a2a9415ca5",
+      "rating": 4,
+      "text": "",
+      "published_at": "2018-04-28T23:43:34.943000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d0d9def0f9e4b8c46e56",
+      "rating": 4,
+      "text": "",
+      "published_at": "2018-04-03T12:13:10.570000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_00f9280c64770f2734de",
+      "rating": 4,
+      "text": "Great facility. Staff is friendly and knowledgeable.",
+      "published_at": "2018-02-27T07:43:15.496000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fa8bdf498557209f15f0",
+      "rating": 4,
+      "text": "Played 18. Course in good shape considering all the rain we had the previous week. Greens were fast.",
+      "published_at": "2018-02-20T12:10:09.605000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_be6ffebaea2f2b2405c8",
+      "rating": 4,
+      "text": "",
+      "published_at": "2018-02-19T04:36:30.399000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_438476244e7246097e79",
+      "rating": 4,
+      "text": "Greens were in great shape, considering the resent cold weather and snow with in the last week.",
+      "published_at": "2017-12-16T19:49:18.644000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_55971d969c27c7f9cb2f",
+      "rating": 5,
+      "text": "Great course.",
+      "published_at": "2017-11-22T18:51:21.919000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_73d4ce26aa4ff7dddd8e",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-11-22T03:48:44.058000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_d4c47d92df1132e10996",
+      "rating": 4,
+      "text": "",
+      "published_at": "2017-11-06T05:34:58.753000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b23099c36134aa765ae3",
+      "rating": 5,
+      "text": "Always a friendly staff. Great course to play.",
+      "published_at": "2017-10-21T20:11:43.992000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fca535d7d1084bb61d6f",
+      "rating": 4,
+      "text": "Good enough course. People who play NEED TO FIX PITCH MARKS ON THE GREENS!!!",
+      "published_at": "2017-10-14T14:48:03.671000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_ab4157da2615aa198211",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-10-13T22:23:04.625000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fc2d7a309497ca5a72ea",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-10-05T13:03:31.679000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_575d3882bac875af1c91",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-10-03T01:50:00.698000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_032878456232e8a4c357",
+      "rating": 3,
+      "text": "Decent layout but course condition was mediocre.",
+      "published_at": "2017-09-17T20:06:33.269000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_bf3d3ac686d9f6abf073",
+      "rating": 5,
+      "text": "Great course, and the staff is helpful",
+      "published_at": "2017-09-11T01:24:09.555000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_42291ee4466813e5717d",
+      "rating": 1,
+      "text": "$75 dollar for that type of golf course is too much . Management need to improve the condition if they gonna ripped of their customer",
+      "published_at": "2017-09-03T16:32:23.079000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e9f9d19b9a22c061b85f",
+      "rating": 1,
+      "text": "My car and a friend’s car were recently broken into in the parking lot of Atlanta Wolf Creek golf course. The thieves broke into both of our gloveboxes stealing my friend’s checkbook and my gun.\n\nBecause the course is not in the best part of town we intentionally parked near the “security camera” that clearly stated that there is video surveillance on property. When we went to the front desk to ask about the camera footage, he informed us that the camera was fake, that this has been going on for two months and that we parked in the spot where cars are getting broken into.\n\nTwo months, eight people robbed before us. There were no signs in the lot to warn their customers not to leave items in their car or that break-ins were occurring. No action to put in a working camera to help counteract this type of activity.\n\nI called Warrior Asset Management, the company that owns Wolf Creek, and they told me I should just call my insurance to handle my loss and I should have been more careful knowing that I was playing golf in a high crime area. The thieves are now armed with a stolen gun. Wolf Creek is off my list of courses to play in Atlanta Georgia.",
+      "published_at": "2017-08-30T17:28:31.670000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b7783cc58e910bfe96ed",
+      "rating": 5,
+      "text": "Great attitude at the front desk. Marshall's w were very helpful. Cart person, very friendly.",
+      "published_at": "2017-08-24T01:57:34.645000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_551aafe85f6e21a38479",
+      "rating": 4,
+      "text": "",
+      "published_at": "2017-08-23T10:32:04.464000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_e3966017b8b5fac577a1",
+      "rating": 3,
+      "text": "",
+      "published_at": "2017-08-15T14:07:44.363000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_fa22f0a289c08c333929",
+      "rating": 5,
+      "text": "Practicing the swing.  Great Golf course.  Workers are a delight.  Very nice community.",
+      "published_at": "2017-08-10T16:59:17.601000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c603c7db8279d388ee52",
+      "rating": 5,
+      "text": "Nice course...well maintained and challenging",
+      "published_at": "2017-08-04T18:36:45.111000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4de6fd970376edcc82e6",
+      "rating": 5,
+      "text": "The course and people are excellent. First place I have ever played where the course marshalls are so freindly and outright funny!!",
+      "published_at": "2017-07-27T02:24:38.079000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b2968f40ec9da5778ea3",
+      "rating": 5,
+      "text": "Awesome course",
+      "published_at": "2017-07-15T03:58:26.949000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c5fc312981e8b4dd571a",
+      "rating": 5,
+      "text": "One of the best coarses I have played. Greens rolled true. Nothing out of place. All around great experience.",
+      "published_at": "2017-07-01T13:07:43.790000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_5f1b79817277158a64d3",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-07-01T01:13:49.882000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2160002dafdcdc566e5f",
+      "rating": 4,
+      "text": "",
+      "published_at": "2017-06-04T10:17:54.274000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_79bf4f5ef450ba0ffdd7",
+      "rating": 4,
+      "text": "Best public course in Southwest Atlanta",
+      "published_at": "2017-05-27T12:38:49.578000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_847d847d4b8e2aa7ff6c",
+      "rating": 5,
+      "text": "Excellent Course, grerns were a little bumpy from being air raided 2 weeks ago. Nice elevations and the fairwaya were plush... Will Play it again.",
+      "published_at": "2017-05-19T20:50:32.325000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_13b144fa026ef48eae8a",
+      "rating": 4,
+      "text": "",
+      "published_at": "2017-04-30T00:37:22.535000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_189b97c97389061f1c54",
+      "rating": 1,
+      "text": "I unfortunately just had one of the worst experiences I've ever had playing golf at this place. I can't blame it on the staff but actually was one of the regulars. I had the first tee time for the morning and when I started I was group with 3 guys who I guess play here every day. One of them, without even saying hello, ask me how do you play? To play with him a little bit I said, I hit it and I hit it again that I had it again. Then he said, How good are you, we play fast.\nSo I knew exactly what he was insinuating. And that type of arrogant posture by golfers pisses people off. And from what I've seen his game so far I'm much better than him but I hate it when these dudes, because they're regulars, think they own the golf course and nobody else should be out there.",
+      "published_at": "2017-04-19T12:18:37.436000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_be8a841a122da94af04e",
+      "rating": 4,
+      "text": "Good effort on the fairways & greens. Played yesterday, and not bad pace of play at around 3 1/2 hours for two people on a holiday.",
+      "published_at": "2017-04-15T14:23:37.892000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_daa533c997dc978d13a5",
+      "rating": 3,
+      "text": "The green should be better maintenanced for the price that they ask",
+      "published_at": "2017-04-13T02:23:07.357000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f58cce210987c2786835",
+      "rating": 5,
+      "text": "",
+      "published_at": "2017-01-24T02:56:21.870000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_03197916e293da72e63d",
+      "rating": 5,
+      "text": "",
+      "published_at": "2016-10-12T20:15:14.927000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_a9de715434f569ff1a61",
+      "rating": 5,
+      "text": "Fun golf course and great friendly staff!",
+      "published_at": "2016-10-07T19:30:54.758000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_29695f0e8b7e31b27314",
+      "rating": 3,
+      "text": "",
+      "published_at": "2016-09-22T20:26:55.428000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0708827074ba991f6765",
+      "rating": 4,
+      "text": "Enough challenges for best golfers",
+      "published_at": "2016-09-17T20:56:23.553000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b672c769e3d140b4233b",
+      "rating": 4,
+      "text": "",
+      "published_at": "2016-09-06T16:16:49.802000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_92f83291cd5ff1b9ebf1",
+      "rating": 4,
+      "text": "Fantastic layout.  Captured and maintained my interest throughout.  Course was in good condition.  This course would demand double what I paid in other areas.  Even better than the course was the manager and staff.  Took great care to make me feel at home.  Very personable.  I only reserve 5 stars for something truly spectacular.  This is a solid 4.",
+      "published_at": "2016-08-02T23:32:44.716000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_2add2b2669b14bb14140",
+      "rating": 5,
+      "text": "",
+      "published_at": "2016-07-09T23:05:36.121000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_dbb9b364aaa2df8f7531",
+      "rating": 4,
+      "text": "Nice staff. Nice course. They need to do a better job of managing the pace. They'll occasionally get people out there that don't understand golf courtesy. Other than that the course is fun to play and in great shape!",
+      "published_at": "2016-07-06T18:24:12.751000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_217d1a447234d148cf35",
+      "rating": 5,
+      "text": "Wow what a great course.  Tee boxes, fairways,  and greens were in perfect condition.  The clubhouse staff was very accommodating. Great experience.  Will play again when I'm in Atlanta.",
+      "published_at": "2016-06-28T22:58:07.021000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_b1e4183c835e97cd28f4",
+      "rating": 5,
+      "text": "I've played golf for over 40 years and April is the best beverage cart person I've ever experienced.  She's always friendly, prompt with service and will even drive to the clubhouse to pick up sandwiches if she's out!  She's a big reason me and my buds play Wolf Creek.  Course is in great shape as of June 2016!",
+      "published_at": "2016-06-20T18:50:48.077000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_c24db8756f9dbc88ac3a",
+      "rating": 4,
+      "text": "Descent course. Often crowded",
+      "published_at": "2016-05-27T20:07:36.856000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_249ddbd3ae16b5acf87c",
+      "rating": 5,
+      "text": "",
+      "published_at": "2015-10-18T22:53:50.515000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_88fc9926be06b010e602",
+      "rating": 5,
+      "text": "The course is in great condition and although it was slightly crowded, we had a great day on this challenging yet fun course.",
+      "published_at": "2015-06-29T14:51:14.887000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_1a853b49780f0f01294f",
+      "rating": 5,
+      "text": "Course was in great shape, fairways and greens perfect and well kept. I think the Michael guy came after all the rain here in Atlanta and happen to come after aeration. Will be coming back more often",
+      "published_at": "2015-06-13T17:42:22.347000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_18b0196fa0a95e4ac6a9",
+      "rating": 1,
+      "text": "Absolutely the worst Golf Course I played in 20 years!! I played all over the world at least 3 times a week...  Staff very unaccommodating!!   Greens were just aerated with massive clumps of sand.   The course has very poor irrigation system.   Fairs were swampy and poorly marked. Just overall a horrendous course!!! Definitely will never come back!!",
+      "published_at": "2015-03-20T18:45:28.467000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_8e5cfa6cd8420408d5bc",
+      "rating": 4,
+      "text": "If this course was located down the street from my house, I would play here more often.  The greens fees were fair and the course was kept up well.  If was a tough course to play.",
+      "published_at": "2015-01-02T04:24:39.984000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_f6ef748d607669f11acc",
+      "rating": 4,
+      "text": "Quite a good course for the $33 we paid. The greens are not quite as well maintained or rolled as the practice green was. The course is TOUGH. The rough is quite deep, and will eat up your drives if you hit them poorly. The greens are fairly small, so it takes a good approach shot to score well.\n\nLooking forward to playing here again.",
+      "published_at": "2014-08-15T04:39:46.049000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_0a7d22640f796c5ede01",
+      "rating": 5,
+      "text": "Amazing and immaculate golf course. Great value, nice, friendly staff, best golf experience in Atlanta.",
+      "published_at": "2013-11-15T19:57:56.029000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_853c033ec40051edeb4f",
+      "rating": 4,
+      "text": "Abit pricey but fine course. Wish they had a senior golfer membetship so me and my buds could play weekly.",
+      "published_at": "2012-11-06T22:51:30.310000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_4d46733c644a331f8ab2",
+      "rating": 5,
+      "text": "Great layout, very challenging and well kept. The staff was very personable and the price was good for midweek golf.",
+      "published_at": "2012-09-15T21:24:17.704000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_482f6cbcfa50fc9d6bae",
+      "rating": 5,
+      "text": "Great location for starting.",
+      "published_at": "2012-07-29T13:52:24.699000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    },
+    {
+      "id": "scr_aae1cfb2b0eab983175e",
+      "rating": 5,
+      "text": "",
+      "published_at": "2011-01-25T21:31:49.509000+00:00",
+      "owner_response_present": false,
+      "provenance": "SCRAPED_PUBLIC_WEB"
+    }
+  ]
+}

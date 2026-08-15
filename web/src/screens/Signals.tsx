@@ -29,13 +29,25 @@ export default function Signals({ ctx }: { ctx: Ctx }) {
       </div>
 
       <div className="card" style={{ borderLeft: "3px solid var(--signal)" }}>
-        <b>Sample honesty</b>
+        <b>Review intelligence scope</b>
         <div style={{ marginTop: 6 }}>
-          <span className="badge signal">n = {sample.reviews.length} reviews</span>
+          <span className="badge signal">{sample.reviews.length} recent low-rating written reviews</span>
           <Prov p={sample.provenance} />
           <span className="badge neutral">window ≈ {sample.window_days} days</span>
         </div>
         <div className="notice" style={{ marginTop: 6 }}>{sample.sample_caveat}</div>
+        {sample.dataset_summary && (
+          <div className="funnel" aria-label="review filtering funnel">
+            <span><b>{sample.dataset_summary.total ?? sample.dataset_summary.source_rows_available}</b> collected</span>
+            <span>→</span>
+            <span><b>{sample.dataset_summary.recent_all_ratings ?? "—"}</b> within {sample.window_days} days</span>
+            <span>→</span>
+            <span><b>{sample.dataset_summary.recent_low_rating ?? "—"}</b> rated ≤3★</span>
+            <span>→</span>
+            <span><b>{sample.dataset_summary.recent_low_rating_written}</b> with written evidence</span>
+          </div>
+        )}
+        {sample.selection && <div className="mono" style={{ marginTop: 8 }}>Filter: {sample.selection}</div>}
         {sample.location_meta?.rating && (
           <div className="notice">Listing rating {sample.location_meta.rating} from {sample.location_meta.rating_count} total ratings (the sample below is NOT those {sample.location_meta.rating_count}).</div>
         )}
@@ -113,16 +125,15 @@ export default function Signals({ ctx }: { ctx: Ctx }) {
         </div>
       )}
 
-      <h2>The review sample</h2>
-      <div className="card">
+      <h2>Recent low-rating written reviews</h2>
+      <div className="card table-scroll">
         <table>
-          <thead><tr><th>Rating</th><th>Review</th><th>Author</th><th>Age</th><th>Provenance</th></tr></thead>
+          <thead><tr><th>Rating</th><th>Review</th><th>Age</th><th>Provenance</th></tr></thead>
           <tbody>
             {sample.reviews.map((r: any) => (
               <tr key={r.id}>
                 <td><span className={`sev ${r.rating <= 2 ? "HIGH" : r.rating === 3 ? "MEDIUM" : "LOW"}`}>{r.rating}★</span></td>
                 <td>{r.text}</td>
-                <td className="notice">{r.author}</td>
                 <td className="notice">{r.days_ago != null ? `${r.days_ago}d ago` : "—"}</td>
                 <td><Prov p={r.provenance} /></td>
               </tr>

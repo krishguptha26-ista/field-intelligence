@@ -1,155 +1,108 @@
 # Field Intelligence — Krishna Guptha Yanduri
 
-## Why I built it this way
+## Approach
 
-At Goldman I own a control that sits between the trading day and the books. It
-reconciles P&L, flags the numbers that don't tie out, explains each exception in
-language a controller can act on, and then stops. A human clears it. Only then do
-the numbers lock. The platform's value isn't that it finds breaks — anyone can
-write a diff. It's that it's trusted enough to be believed, and disciplined
-enough that nobody is ever accused of a break that isn't one. That took the
-exception cycle from about a day to six minutes, and match rates from roughly
-40% to 98–99%.
+I treated this as a trust system, not a checklist demo. In a franchise network,
+the expensive error is a confident finding the evidence does not support: it
+wastes the consultant's time and damages the franchisor-franchisee relationship.
+The product therefore follows one rule: **the agent proposes; a human decides**.
 
-A field audit is the same problem wearing different clothes. A consultant walks a
-property, sees things, writes them up. The write-up varies by who held the
-clipboard. Evidence and opinion blur together. And the worst outcome isn't a
-missed issue — it's a franchisee accused of something the evidence didn't
-support. That's a relationship, not a ticket.
+The primary in-the-moment user is the field consultant. The mobile-first Field
+Companion guides them area by area while they speak, type, take a photo, record a
+short video, or answer structured checks. Voice is transcribed but cannot enter
+analysis until the consultant confirms it; photo/video models can describe
+observable facts but their schemas cannot return a violation. The agent then
+investigates through tenant-scoped, read-only tools and makes a schema-validated
+decision. Ambiguous input such as “the restroom floor looked a little dirty”
+becomes a targeted question, never a finding. Specific input can become a
+candidate finding containing the consultant's exact statement, the model's
+separate interpretation, cited standard, severity, confidence, uncertainty,
+what the evidence does not establish, and a proposed owner/deadline.
 
-So I built the same control: **detect, explain, human clears, lock.** The system
-proposes; it never decides.
+Four gates protect the reviewer: deterministic ambiguity policy, proof that the
+cited standard was retrieved in that run, a check that customer sentiment is not
+presented as field evidence, and three independent challenge lenses (evidence
+sufficiency, franchisee advocate, standards fit). The panel is reviewer-triggered
+in the SQLite POC so a consultant is not blocked for ~40 seconds in the field;
+missing challenger responses fail closed. Only an independent human approval
+creates a corrective action. Closure requires a real after-photo before manager
+verification; review, edits, disputes and verification are append-only events.
 
-## What it does
+The implementation is a modular monolith: FastAPI, SQLAlchemy, React/Vite and one
+model gateway supporting Gemini or a labelled deterministic fixture engine.
+SQLite keeps the POC portable; `DATABASE_URL` switches the same domain model to
+Postgres. Prompts are versioned files and every model call records provider,
+model, tokens, latency, estimated cost, retries and success. A second EV/depot
+tenant runs through the same engine with separate standards, demonstrating the
+multi-tenant boundary without claiming production authentication.
 
-Raw audit input goes in — a typed note, a checklist item, or a photograph. What
-comes out is either a clarifying question or a candidate finding with its
-evidence attached, its cited standard, its confidence, and an explicit list of
-what the evidence does *not* establish. A human approves, edits, rejects or
-disputes. Only approval creates a corrective action. Every step is an
-append-only log entry.
+## Results
 
-The part I'd point at first is what it refuses to do. Type *"the restroom looked
-a little dirty"* and it asks which restroom and what exactly you saw, rather than
-writing up a franchisee. That behaviour is enforced in four independent places,
-because a prompt alone will not hold it.
+Google Places worked but returned five Google-selected reviews, all positive in
+the observed response. I kept that source visible and correctly labelled, then
+used a pinned open-source collector once, outside the application request path,
+to obtain the complete Wolf Creek public snapshot. The import removes reviewer
+names, profiles and photos and hashes review IDs. The resulting 362 rows include
+42 one-star, 17 two-star, 28 three-star, 84 four-star and 191 five-star reviews.
+The product filters locally to ≤92 days, ≤3 stars and written feedback: 22 recent
+ratings become 7 actionable written reviews. Four recurring themes emerge:
+hydration availability, service/value response, cart/GPS reliability, and
+temporary-green disclosure. Reviews remain context and can never create a
+compliance finding.
 
-Four things it does that a checklist tool doesn't:
+I extended that signal into an operational loop: recurring themes create
+idempotent, assigned triage tickets; staff must validate the issue on site,
+attach before and after images, submit a resolution, and obtain independent
+manager verification. Only then does the app draft a public owner reply. It does
+not pretend Google exposes private reviewer contact details. Rating impact stays
+`BASELINE_ONLY` until a later comparable snapshot exists, so the product cannot
+manufacture an ROI claim.
 
-**It investigates before it decides.** The agent doesn't get the standards handed
-to it. It calls read-only tools to retrieve them, look up the location's history,
-and check the zone — then decides in a second pass with the tools switched off. A
-finding may only cite a standard the agent actually retrieved in that run; if it
-cites one it didn't, the finding is automatically demoted to a question. `CLN-01`
-is a plausible-looking code, and a model that has read a few brand manuals can
-invent one. This makes a cited standard different from a remembered one.
+“Continuous learning” is also governed. Repeated customer language can propose a
+new measurable parameter with anonymized examples, but a named standards owner
+must approve or reject it. Approval queues design work; it does not silently
+retrain a model or rewrite a standard.
 
-**It remembers.** The restroom finding in the demo comes back as CRITICAL, not
-HIGH, with the reason attached: this exact issue was found here 118 days ago,
-corrected, and signed off — and it's back. A first occurrence is an incident. A
-recurrence after sign-off is a process failure. Those are different conversations
-to have with an operator, and no checklist app can tell them apart.
+For competitive intelligence, I collected and privacy-minimized 1,235 additional
+reviews from three nearby Atlanta public courses. Only aggregate counts, rates
+and hashed evidence references ship. Positive-theme rates show Wolf Creek's
+relative strengths in course condition, staff hospitality and layout/challenge,
+and supported opportunities in practice-facility visibility and value messaging.
+The UI labels the manually selected cohort directional, not representative market
+research.
 
-**It argues with itself.** Before any finding reaches a human, three challengers
-attack it in parallel: one on whether the evidence supports the claim, one
-representing the franchisee making the strongest honest case that the finding is
-unfair, and one checking whether the cited standard actually covers what was
-seen. Two overturn votes and the finding never reaches the reviewer — it becomes
-a question instead. The reviewer sees the arguments and can disagree with the
-panel as easily as with the model. This is the opposite of automating the human
-away. It hands them the case for the defence.
+Validation is deliberately harder than a happy-path demo. Fourteen API/domain
+regression tests pass, including forged provenance, arbitrary standard codes,
+unconfirmed voice, high-privacy media, self-review and evidence-free closure.
+The deterministic behavioural suite ran each executable
+case three times: 14/14 passed, zero flaky, with model-only cases explicitly
+skipped rather than counted green; the zero-unsupported-finding release gate
+cleared over a non-empty finding set. Separately, live Gemini passed the text
+injection case once and the vision injection case three consecutive times. The
+production bundle type-checks, `npm audit` reports zero vulnerabilities, the
+Docker image builds, and a no-secret production container passed health, review,
+benchmark and destructive-reset protection smoke checks. Desktop and 390px mobile
+browser validation found no console errors or horizontal overflow. Live Gemini
+also transcribed a real WAV, described a real MP4 with time-coded facts, refused
+to store that people-filled clip in a high-privacy restroom, and downgraded a
+candidate finding after two of three independent challenge lenses weakened it.
 
-**It reads photographs without judging them.** The vision model describes what's
-in the frame and lists what the image doesn't establish. It has no way to cite a
-standard or reach a verdict — its output schema has no field for one. The
-description becomes an observation and goes through the same pipeline as
-anything typed. One-step "photo in, violation out" is the demo that wins a
-bake-off and loses a franchisee.
+## What is honest, and what comes next
 
-## What it cost and what it caught
+BroadPeak supplied no controlled internal standards, credentials or private data.
+Wolf Creek uses a sourced, jurisdiction-labelled external guide (law, conditional
+requirements, industry BMP and venue policy remain distinct); representative
+operating prompts and the EV tenant remain labelled. There is no authentication; the role
+selector says “demo persona.” Google Business Profile publishing is a draft-only
+integration boundary. Live scraping is not a production dependency. Image files
+are content-validated locally, but production still needs identity, object
+storage, malware scanning, retention/deletion policy and legal review.
 
-Measured on the live system, not estimated: **141 model calls across 28 audits,
-$0.144 total — $0.0051 per completed audit**, about half a US cent, at ~7s
-median latency. Adding the challenge panel roughly tripled the per-audit cost.
-Against a consultant hour, that is not a number worth optimising yet, and the
-console shows the real figure rather than a projection.
-
-The evaluation suite is 16 behavioural cases, each run multiple times, reporting
-a pass *rate* rather than a pass. The release gate is the unsupported-finding
-rate: a finding that reaches a reviewer without evidence, without a cited
-standard, or citing one the agent never retrieved. The gate is zero and it is
-currently clear.
-
-Two bugs the discipline caught that I'd have shipped otherwise. Once the live
-Google data came on, real reviews began blending with seeded demo ones under a
-single `LIVE_API` label — the one failure that would justify distrusting every
-other label on the screen. And the challenge panel voted 3–0 to overturn a
-perfectly good finding, which turned out to be my bug: I was showing the
-challengers the original vague note and not the clarification that answered it.
-A panel that rubber-stamped would have hidden that.
-
-I also rewrote the eval suite because it was lying to me. The old version scored
-9/10 with a different case failing each run — noise presented as a number. Worse,
-its prompt-injection assertion was a substring match, and the *correct* behaviour
-(quoting a malicious sign as evidence) contains the same words as the *incorrect*
-one (obeying it). It was failing the product precisely when the product behaved
-well. Semantic assertions are now graded by a judge that fails closed; everything
-mechanically checkable stayed deterministic.
-
-## How it's built
-
-A modular monolith: FastAPI and SQLAlchemy behind a React front end, SQLite for
-the POC with Postgres one environment variable away. One gateway interface with
-two providers, so swapping models is configuration and the eval suite is the net
-that makes swapping safe. No agent framework — one orchestrator owns control
-flow, the tools are a narrow typed registry, and every one of them is read-only.
-The model never gets a browser, a shell, or the ability to change state. All
-mutation happens in deterministic Python after a schema-validated decision comes
-back.
-
-Public signals are queried from four sources in parallel and ranked by trust,
-because during this build the Google Places API was switched off at the project
-level and there was nothing in the code that could fix it. An evidence layer that
-someone else's console can disable isn't an evidence layer. OpenStreetMap now
-answers the question that matters most — *is this the right place?* — with no key
-and no quota, and it independently confirmed the location and turned up a
-cross-channel name discrepancy for free.
-
-Reviews are never proof. They sit visually apart from findings, carry an n≤5
-sample warning, can only ever say "consistent with, but does not prove", and
-cannot create a finding under any circumstances. When the agent's own wording
-drifted toward implying otherwise, I added a deterministic check that catches it
-and labels the correction, because on this particular rule a prompt is not enough.
-
-## What's honest about it
-
-The standards are representative, not BroadPeak's. I've asked for a real
-redacted checklist; the layer is per-tenant configurable and swapping them is
-data entry, not engineering. The second tenant — an EV and delivery depot in Al
-Quoz — is a labelled fixture, but it runs the identical pipeline against its own
-standards, which is the actual claim. Verification photos are simulated and
-labelled as such. There's no auth, just a role switcher. The public-web scraper
-exists but is off by default, and I've documented plainly that on this location
-it returns nothing and will break when the page changes.
-
-Every screen declares whether what you're looking at is live, cached, fixture or
-simulated. That panel makes the demo look less impressive and makes it more
-believable, which is the right trade.
-
-## Where I'd take it
-
-**First 30 days:** ground truth. Real standards, read-only access to the Business
-Profile data BroadPeak already owns, and a camera and privacy policy agreed
-before a single frame is captured. **Days 30–60:** shadow mode at one property —
-the agent runs alongside a consultant and changes nothing, while I measure
-write-up time, unsupported-finding rate, and how often the challenge panel was
-right. **Days 60–90:** if those numbers earn it, one property in live use and the
-second tenant type stood up to prove the engine travels.
-
-Three things I'd want from you: one redacted real audit checklist, read-only
-access to owned reviews for one location, and one pilot property for sixty days.
-
-The thing I'd measure is not how many findings it produces. It's how many
-findings a franchisee successfully disputes. At Goldman the number that mattered
-was never breaks found — it was breaks wrongly raised. Same control, different
-building.
+First 30 days: load one redacted standards set, add SSO/RBAC and authorized
+Business Profile access, and agree the photo/privacy policy. Days 30–60: run one
+property in shadow mode and measure audit time, clarification rate, unsupported
+findings, successful disputes and challenge-panel value. Days 60–90: if those
+metrics earn trust, enable one live property, compare the post-resolution review
+snapshot without claiming causality, and test a second real tenant. The north-star
+metric is not findings produced; it is findings a franchisee can successfully
+dispute.

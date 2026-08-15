@@ -85,9 +85,9 @@ export default function Portfolio({ ctx, goto }: { ctx: Ctx; goto: (s: string) =
         )}
       </div>
 
-      <button className="ghost" disabled={resetting} onClick={async () => {
+      {sim?.demo_reset_available && <button className="ghost" disabled={resetting} onClick={async () => {
         setResetting(true); await api.demoReset(); location.reload();
-      }}>{resetting ? "Resetting…" : "Reset demo data"}</button>
+      }}>{resetting ? "Resetting…" : "Reset demo data"}</button>}
     </div>
   );
 }

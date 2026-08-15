@@ -152,12 +152,12 @@ document name its own delimiter in prose.
 
 ## Rejected this session
 
-- **A Google Maps review scraper as a primary source.** Requested, and built —
-  but quarantined, off by default, cache-first, bottom of the trust ladder, with
-  the browser deliberately absent from the deploy image. Recorded honestly in
-  ADR-010: on the reference location it returns *nothing* (the page served to a
-  headless browser has no Reviews tab), it depends on a DOM that changes without
-  notice, and it will break.
+- **A live Google Maps scraper in the request path.** A pinned open-source
+  collector succeeded outside the app (362 Wolf Creek rows plus 1,235 comparator
+  rows), but live collection remains quarantined and absent from page requests.
+  Imports remove reviewer identity and photos before snapshots enter the product.
+  The snapshot solves the five-review POC gap; an authorized operator export or
+  Business Profile integration remains the production path.
 - **A fixture stand-in for vision.** Every other capability has a deterministic
   offline twin so the demo runs keyless. Vision does not, and must not: a
   plausible description of a photograph nobody looked at would enter the system

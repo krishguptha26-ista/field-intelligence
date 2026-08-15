@@ -1,0 +1,223 @@
+{
+  "location_id": "wolf-creek-atlanta",
+  "provenance": "SCRAPED_PUBLIC_WEB_AGGREGATE",
+  "cohort": [
+    {
+      "id": "wolf-creek-atlanta",
+      "name": "Wolf Creek Golf Club",
+      "total_reviews": 362,
+      "positive_written_reviews": 169,
+      "rating_histogram": {
+        "1": 42,
+        "2": 17,
+        "3": 28,
+        "4": 84,
+        "5": 191
+      },
+      "captured_at": "2026-08-14T16:04:47.773136+00:00"
+    },
+    {
+      "id": "browns-mill-atlanta",
+      "name": "Brown's Mill Golf Course",
+      "total_reviews": 481,
+      "positive_written_reviews": 184,
+      "rating_histogram": {
+        "1": 45,
+        "2": 22,
+        "3": 54,
+        "4": 131,
+        "5": 229
+      },
+      "captured_at": "2026-08-14T16:22:14.251511+00:00"
+    },
+    {
+      "id": "alfred-tup-holmes-atlanta",
+      "name": "Alfred Tup Holmes Golf Course",
+      "total_reviews": 366,
+      "positive_written_reviews": 124,
+      "rating_histogram": {
+        "1": 28,
+        "2": 19,
+        "3": 44,
+        "4": 103,
+        "5": 172
+      },
+      "captured_at": "2026-08-14T16:22:14.579258+00:00"
+    },
+    {
+      "id": "chastain-park-atlanta",
+      "name": "Chastain Park Golf Course",
+      "total_reviews": 388,
+      "positive_written_reviews": 119,
+      "rating_histogram": {
+        "1": 58,
+        "2": 28,
+        "3": 57,
+        "4": 106,
+        "5": 139
+      },
+      "captured_at": "2026-08-14T16:22:14.908234+00:00"
+    }
+  ],
+  "method": "Directional comparison of theme mentions per 100 written 4-5 star reviews. Three manually selected Atlanta public-course comparators; no reviewer identity, verbatim review text, causal claim, or claim of market representativeness.",
+  "comparisons": [
+    {
+      "key": "practice_facilities",
+      "label": "Practice facilities",
+      "subject_rate": 2.4,
+      "subject_mentions": 4,
+      "peer_median_rate": 3.8,
+      "leader": "Chastain Park Golf Course",
+      "leader_rate": 6.7,
+      "leader_mentions": 8,
+      "gap_to_leader_pp": 4.3,
+      "classification": "OPPORTUNITY",
+      "recommendation": "Promote and operationally verify practice-facility availability as part of the pre-round experience.",
+      "leader_evidence_refs": [
+        "scr_0db0de2f79cf6a29130d",
+        "scr_4560c8bb127610f62d92",
+        "scr_f518800a50ff3a809944",
+        "scr_adea2336fd1b933a619e",
+        "scr_99e77db3e84080f859ca"
+      ]
+    },
+    {
+      "key": "value",
+      "label": "Value for money",
+      "subject_rate": 4.7,
+      "subject_mentions": 8,
+      "peer_median_rate": 8.1,
+      "leader": "Brown's Mill Golf Course",
+      "leader_rate": 8.7,
+      "leader_mentions": 16,
+      "gap_to_leader_pp": 4.0,
+      "classification": "OPPORTUNITY",
+      "recommendation": "Tie price messaging to the concrete experience included, especially where conditions have improved.",
+      "leader_evidence_refs": [
+        "scr_6638695208e92dc26df8",
+        "scr_6f5dad68c603915f92f1",
+        "scr_f0bb96300e75b0ceb2d9",
+        "scr_e78dd76d23fc351c7691",
+        "scr_cb66c0604ca73bb9ed41"
+      ]
+    },
+    {
+      "key": "layout_challenge",
+      "label": "Layout and challenge",
+      "subject_rate": 18.9,
+      "subject_mentions": 32,
+      "peer_median_rate": 10.5,
+      "leader": "Chastain Park Golf Course",
+      "leader_rate": 14.3,
+      "leader_mentions": 17,
+      "gap_to_leader_pp": -4.6,
+      "classification": "RELATIVE_STRENGTH",
+      "recommendation": "",
+      "leader_evidence_refs": [
+        "scr_9485ecae3259765eb9c7",
+        "scr_48a631cfd9b2ed6d4406",
+        "scr_070f6a4e4f536ecffc92",
+        "scr_80d596b197c269de0392",
+        "scr_3ec041d3816e90933ec6"
+      ]
+    },
+    {
+      "key": "staff_hospitality",
+      "label": "Staff hospitality",
+      "subject_rate": 26.6,
+      "subject_mentions": 45,
+      "peer_median_rate": 12.5,
+      "leader": "Chastain Park Golf Course",
+      "leader_rate": 15.1,
+      "leader_mentions": 18,
+      "gap_to_leader_pp": -11.5,
+      "classification": "RELATIVE_STRENGTH",
+      "recommendation": "",
+      "leader_evidence_refs": [
+        "scr_0c0d38c64aafa2f1ff03",
+        "scr_0a1bedb8b59356395dfc",
+        "scr_48a631cfd9b2ed6d4406",
+        "scr_0db0de2f79cf6a29130d",
+        "scr_6965bccf65bc16490a24"
+      ]
+    },
+    {
+      "key": "course_condition",
+      "label": "Course and green condition",
+      "subject_rate": 36.1,
+      "subject_mentions": 61,
+      "peer_median_rate": 15.1,
+      "leader": "Brown's Mill Golf Course",
+      "leader_rate": 22.3,
+      "leader_mentions": 41,
+      "gap_to_leader_pp": -13.8,
+      "classification": "RELATIVE_STRENGTH",
+      "recommendation": "",
+      "leader_evidence_refs": [
+        "scr_1edac9d1f962a364fa9b",
+        "scr_0c001033e3224cca869a",
+        "scr_f0bb96300e75b0ceb2d9",
+        "scr_d8c4d62b9325e64b565d",
+        "scr_990db7e4cdbc0be38d9c"
+      ]
+    },
+    {
+      "key": "pace_of_play",
+      "label": "Pace of play",
+      "subject_rate": 0.6,
+      "subject_mentions": 1,
+      "peer_median_rate": 0.0,
+      "leader": "Chastain Park Golf Course",
+      "leader_rate": 0.8,
+      "leader_mentions": 1,
+      "gap_to_leader_pp": 0.2,
+      "classification": "NO_CLEAR_SIGNAL",
+      "recommendation": "",
+      "leader_evidence_refs": [
+        "scr_34209849336ea2a598bf"
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "key": "practice_facilities",
+      "label": "Practice facilities",
+      "subject_rate": 2.4,
+      "subject_mentions": 4,
+      "peer_median_rate": 3.8,
+      "leader": "Chastain Park Golf Course",
+      "leader_rate": 6.7,
+      "leader_mentions": 8,
+      "gap_to_leader_pp": 4.3,
+      "classification": "OPPORTUNITY",
+      "recommendation": "Promote and operationally verify practice-facility availability as part of the pre-round experience.",
+      "leader_evidence_refs": [
+        "scr_0db0de2f79cf6a29130d",
+        "scr_4560c8bb127610f62d92",
+        "scr_f518800a50ff3a809944",
+        "scr_adea2336fd1b933a619e",
+        "scr_99e77db3e84080f859ca"
+      ]
+    },
+    {
+      "key": "value",
+      "label": "Value for money",
+      "subject_rate": 4.7,
+      "subject_mentions": 8,
+      "peer_median_rate": 8.1,
+      "leader": "Brown's Mill Golf Course",
+      "leader_rate": 8.7,
+      "leader_mentions": 16,
+      "gap_to_leader_pp": 4.0,
+      "classification": "OPPORTUNITY",
+      "recommendation": "Tie price messaging to the concrete experience included, especially where conditions have improved.",
+      "leader_evidence_refs": [
+        "scr_6638695208e92dc26df8",
+        "scr_6f5dad68c603915f92f1",
+        "scr_f0bb96300e75b0ceb2d9",
+        "scr_e78dd76d23fc351c7691",
+        "scr_cb66c0604ca73bb9ed41"
+      ]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ from typing import Type, TypeVar
 from pydantic import BaseModel
 
 from . import config
+from .budget import ModelBudgetExceeded, require_model_budget
 from .models import ModelCall, SessionLocal, uid
 from .schemas import (ActionDraft, AnalysisResult, Challenge, ClarifySpec,
                       FindingDraft, ObservationDecision, ReviewTheme,
@@ -167,9 +168,17 @@ class GeminiProvider:
         stopped = "model_finished"
 
         for step in range(max_steps):
+            require_model_budget(audit_id)
             start = time.time()
-            resp = self._client.models.generate_content(
-                model=config.LLM_MODEL, contents=contents, config=cfg)
+            try:
+                resp = self._client.models.generate_content(
+                    model=config.LLM_MODEL, contents=contents, config=cfg)
+            except Exception:
+                _log_call(tenant_id=tenant_id, audit_id=audit_id,
+                          purpose=f"{purpose}:investigate", provider=self.name,
+                          model=config.LLM_MODEL, tin=0, tout=0,
+                          latency_ms=int((time.time() - start) * 1000), ok=False)
+                raise
             latency = int((time.time() - start) * 1000)
             usage = getattr(resp, "usage_metadata", None)
             _log_call(tenant_id=tenant_id, audit_id=audit_id,
@@ -200,7 +209,7 @@ class GeminiProvider:
 
     # -- vision: photo → neutral observation ------------------------------
     def describe_image(self, *, image_bytes: bytes, mime_type: str, zone_hint: str,
-                       privacy_level: str, tenant_id: str,
+                       privacy_level: str, evidence_request: str = "", tenant_id: str,
                        audit_id: str | None) -> "PhotoDescription":
         """Convert a photograph into a described observation. Judges nothing.
 
@@ -213,48 +222,137 @@ class GeminiProvider:
 
         doc = (config.PROMPTS_DIR / "photo_description.md").read_text()
         context = (f"\n\nZone: {zone_hint or 'not specified'}\n"
-                   f"Zone privacy level: {privacy_level or 'NORMAL'}\n")
-        start = time.time()
-        resp = self._client.models.generate_content(
-            model=config.LLM_MODEL,
-            contents=[types.Content(role="user", parts=[
-                types.Part(text=doc + context),
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)])],
-            config=types.GenerateContentConfig(
-                system_instruction=_system_prompt(),
-                response_mime_type="application/json",
-                response_schema=PhotoDescription,
-                temperature=0.1))
-        latency = int((time.time() - start) * 1000)
-        usage = getattr(resp, "usage_metadata", None)
-        parsed = resp.parsed or PhotoDescription.model_validate_json(resp.text)
-        _log_call(tenant_id=tenant_id, audit_id=audit_id, purpose="photo_description",
-                  provider=self.name, model=config.LLM_MODEL,
-                  tin=getattr(usage, "prompt_token_count", 0) or 0,
-                  tout=getattr(usage, "candidates_token_count", 0) or 0,
-                  latency_ms=latency, ok=True)
-        return parsed
+                   f"Zone privacy level: {privacy_level or 'NORMAL'}\n"
+                   f"Evidence request: {evidence_request or 'standalone field photo'}\n")
+        last_error: Exception | None = None
+        for attempt in range(2):
+            require_model_budget(audit_id)
+            start = time.time()
+            try:
+                resp = self._client.models.generate_content(
+                    model=config.LLM_MODEL,
+                    contents=[types.Content(role="user", parts=[
+                        types.Part(text=doc + context),
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type)])],
+                    config=types.GenerateContentConfig(
+                        system_instruction=_system_prompt(),
+                        response_mime_type="application/json",
+                        response_schema=PhotoDescription,
+                        temperature=0.1))
+                latency = int((time.time() - start) * 1000)
+                usage = getattr(resp, "usage_metadata", None)
+                parsed = resp.parsed or PhotoDescription.model_validate_json(resp.text)
+                _log_call(tenant_id=tenant_id, audit_id=audit_id,
+                          purpose="photo_description", provider=self.name,
+                          model=config.LLM_MODEL,
+                          tin=getattr(usage, "prompt_token_count", 0) or 0,
+                          tout=getattr(usage, "candidates_token_count", 0) or 0,
+                          latency_ms=latency, ok=True, retries=attempt)
+                return parsed
+            except Exception as exc:
+                last_error = exc
+                _log_call(tenant_id=tenant_id, audit_id=audit_id,
+                          purpose="photo_description", provider=self.name,
+                          model=config.LLM_MODEL, tin=0, tout=0,
+                          latency_ms=int((time.time() - start) * 1000),
+                          ok=False, retries=attempt)
+        raise RuntimeError(f"Gemini photo description failed after retry: {last_error}")
+
+    def describe_media(self, *, media_bytes: bytes, mime_type: str,
+                       media_kind: str, zone_hint: str, privacy_level: str,
+                       standard_hint: str, tenant_id: str,
+                       audit_id: str | None) -> "MediaDescription":
+        """Transcribe audio or neutrally describe a short video.
+
+        The schema cannot return a compliance verdict. Audio remains a
+        consultant attestation; video contributes only facts visible/audible in
+        the supplied clip. The audit agent performs standards retrieval later.
+        """
+        from google.genai import types
+        from .schemas import MediaDescription
+
+        doc = (config.PROMPTS_DIR / "media_description.md").read_text()
+        context = (
+            f"\n\nMedia kind: {media_kind}\n"
+            f"Zone: {zone_hint or 'not specified'}\n"
+            f"Zone privacy level: {privacy_level or 'NORMAL'}\n"
+            f"Consultant-selected standard context: {standard_hint or 'none'}\n"
+        )
+        last_error: Exception | None = None
+        for attempt in range(2):
+            require_model_budget(audit_id)
+            start = time.time()
+            try:
+                resp = self._client.models.generate_content(
+                    model=config.LLM_MODEL,
+                    contents=[types.Content(role="user", parts=[
+                        types.Part(text=doc + context),
+                        types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
+                    ])],
+                    config=types.GenerateContentConfig(
+                        system_instruction=_system_prompt(),
+                        response_mime_type="application/json",
+                        response_schema=MediaDescription,
+                        temperature=0.1,
+                    ),
+                )
+                latency = int((time.time() - start) * 1000)
+                usage = getattr(resp, "usage_metadata", None)
+                parsed = resp.parsed or MediaDescription.model_validate_json(resp.text)
+                _log_call(
+                    tenant_id=tenant_id, audit_id=audit_id,
+                    purpose=f"{media_kind.lower()}_description", provider=self.name,
+                    model=config.LLM_MODEL,
+                    tin=getattr(usage, "prompt_token_count", 0) or 0,
+                    tout=getattr(usage, "candidates_token_count", 0) or 0,
+                    latency_ms=latency, ok=True, retries=attempt,
+                )
+                return parsed
+            except Exception as exc:
+                last_error = exc
+                _log_call(
+                    tenant_id=tenant_id, audit_id=audit_id,
+                    purpose=f"{media_kind.lower()}_description", provider=self.name,
+                    model=config.LLM_MODEL, tin=0, tout=0,
+                    latency_ms=int((time.time() - start) * 1000),
+                    ok=False, retries=attempt,
+                )
+        raise RuntimeError(
+            f"Gemini {media_kind.lower()} description failed after retry: {last_error}")
 
     # -- phase 2: decide ---------------------------------------------------
     def generate(self, *, purpose: str, prompt: str, schema: Type[T],
                  tenant_id: str, audit_id: str | None) -> T:
         last_err: Exception | None = None
-        attempt_prompt = prompt
+        schema_json = json.dumps(schema.model_json_schema(), separators=(",", ":"))
+        base_prompt = f"{prompt}\n\nOUTPUT_JSON_SCHEMA:{schema_json}"
+        attempt_prompt = base_prompt
         gen_config: dict = {
             "system_instruction": _system_prompt(),
             "response_mime_type": "application/json",
-            "response_schema": schema,
             "temperature": 0.2,
         }
         if config.LLM_THINKING_BUDGET is not None:
             gen_config["thinking_config"] = {"thinking_budget": config.LLM_THINKING_BUDGET}
         for attempt in range(2):  # one retry on schema violation
+            require_model_budget(audit_id)
             start = time.time()
-            resp = self._client.models.generate_content(
-                model=config.LLM_MODEL,
-                contents=attempt_prompt,
-                config=gen_config,
-            )
+            try:
+                resp = self._client.models.generate_content(
+                    model=config.LLM_MODEL,
+                    contents=attempt_prompt,
+                    config=gen_config,
+                )
+            except Exception as e:
+                last_err = e
+                latency = int((time.time() - start) * 1000)
+                _log_call(tenant_id=tenant_id, audit_id=audit_id, purpose=purpose,
+                          provider=self.name, model=config.LLM_MODEL, tin=0,
+                          tout=0, latency_ms=latency, ok=False, retries=attempt)
+                attempt_prompt = (f"{base_prompt}\n\nThe previous model call failed: "
+                                  f"{str(e)[:800]}. Return ONLY JSON that matches "
+                                  "OUTPUT_JSON_SCHEMA exactly.")
+                continue
             latency = int((time.time() - start) * 1000)
             usage = getattr(resp, "usage_metadata", None)
             tin = getattr(usage, "prompt_token_count", 0) or 0
@@ -272,8 +370,9 @@ class GeminiProvider:
                 _log_call(tenant_id=tenant_id, audit_id=audit_id, purpose=purpose,
                           provider=self.name, model=config.LLM_MODEL, tin=tin,
                           tout=tout, latency_ms=latency, ok=False, retries=attempt)
-                attempt_prompt = (f"{prompt}\n\nYour previous response failed schema "
-                                  f"validation: {e}. Return ONLY valid JSON for the schema.")
+                attempt_prompt = (f"{base_prompt}\n\nYour previous response failed schema "
+                                  f"validation: {str(e)[:800]}. Return ONLY JSON that "
+                                  "matches OUTPUT_JSON_SCHEMA exactly.")
         raise RuntimeError(f"Gemini structured output failed after retry: {last_err}")
 
 
@@ -287,13 +386,20 @@ _SPECIFIC = re.compile(r"\b(overflow\w*|standing water|spill\w*|debris|broken|cr
                        r"blocked|expired|leak\w*|odou?rs?|out of order|no (soap|paper)|propped open|"
                        r"unsecured|unlabell?ed|unlabeled|on the floor|across the (walkway|lane)|"
                        r"flicker\w*|fault\w*|trip hazard|no wet.floor sign|slip hazard|"
+                       r"unavailable|absent|not present|not on duty|no (guard|officer)|"
                        r"\d+ ?(min|minutes|hours))\b", re.I)
 _POSITIVE = re.compile(r"\b(clean|excellent|good condition|no issues?|well maintained|"
                        r"fine|great|passed)\b", re.I)
+_NEGATED_POSITIVE = re.compile(
+    r"\b(?:not|never|wasn['â€™]?t|isn['â€™]?t|aren['â€™]?t|no longer)\s+"
+    r"(?:very\s+)?(?:clean|excellent|in good condition|well maintained|fine|great|passed)\b",
+    re.I,
+)
 _INJECTION = re.compile(r"(ignore (all )?(previous|prior) instructions|reveal|api key|"
                         r"system prompt)", re.I)
 
 _KEYWORD_STANDARD = [
+    (re.compile(r"security|guard|security officer|entrance officer|cctv", re.I), "security_presence"),
     (re.compile(r"restroom|bathroom|toilet", re.I), "cleanliness"),
     (re.compile(r"floor|spill|litter", re.I), "cleanliness"),
     (re.compile(r"cart path|walkway|trip", re.I), "safety"),
@@ -317,6 +423,12 @@ class FixtureProvider:
     """
     name = "fixture"
 
+    def describe_media(self, **kwargs):
+        raise RuntimeError(
+            "Audio/video analysis requires a live multimodal model. There is no "
+            "fixture transcript or description because fabricated media evidence "
+            "would be indistinguishable from a real capture.")
+
     def investigate(self, *, purpose: str, prompt: str, tool_declarations: list[dict],
                     execute, tenant_id: str, audit_id: str | None,
                     max_steps: int = 6) -> dict:
@@ -327,11 +439,14 @@ class FixtureProvider:
         layer is exercised even when no model is present. Only the *choice* of
         which tools to call is scripted.
         """
+        require_model_budget(audit_id)
         start = time.time()
         payload = _extract_payload(prompt)
         trace: list[dict] = []
         step = 0
-        for ob in payload.get("observations", [])[:3]:
+        for ob in payload.get("observations", []):
+            if step >= max_steps:
+                break
             text = f"{ob.get('text','')} {ob.get('clarification_answer') or ''}".strip()
             cat = next((c for rx, c in _KEYWORD_STANDARD if rx.search(text)), None)
             step += 1
@@ -365,6 +480,7 @@ class FixtureProvider:
 
     def generate(self, *, purpose: str, prompt: str, schema: Type[T],
                  tenant_id: str, audit_id: str | None) -> T:
+        require_model_budget(audit_id)
         start = time.time()
         payload = _extract_payload(prompt)
         if schema is AnalysisResult:
@@ -397,7 +513,22 @@ class FixtureProvider:
             answered = ob.get("clarification_answer") or ""
             merged = f"{clean_text} {answered}".strip()
 
-            if _POSITIVE.search(merged) and not _SPECIFIC.search(merged) and not _VAGUE.search(merged):
+            if (re.search(r"\bsecurity\b", merged, re.I)
+                    and re.search(r"\b(missing|unavailable|absent|not present)\b", merged, re.I)
+                    and not re.search(r"\b(guard|officer|personnel|camera|cctv|equipment)\b", merged, re.I)):
+                decisions.append(ObservationDecision(
+                    observation_id=oid, decision="CLARIFY",
+                    clarify=ClarifySpec(
+                        question=("When you say security is missing, do you mean the scheduled "
+                                  "guard/officer is absent, or that security equipment is missing?"),
+                        why_needed=("The people-coverage and equipment conditions are different "
+                                    "issues and must not be inferred from the word security."),
+                        options=["Scheduled guard/officer absent", "Security equipment missing",
+                                 "Both", "Neither / clarify"])))
+                continue
+
+            if (_POSITIVE.search(merged) and not _NEGATED_POSITIVE.search(merged)
+                    and not _SPECIFIC.search(merged) and not _VAGUE.search(merged)):
                 decisions.append(ObservationDecision(
                     observation_id=oid, decision="NO_ISSUE",
                     note=("Observation records acceptable condition." +
@@ -501,12 +632,26 @@ class FixtureProvider:
          [("operations", "Consistent with, but does not prove, check-in staffing below OPS-01 expectations.")]),
         ("Beverage cart availability", re.compile(r"beverage cart|drink cart", re.I),
          [("operations", "Consistent with an F&B route-coverage gap; no field evidence linked.")]),
+        ("On-course drinking water availability",
+         re.compile(r"no (?:drinking )?water|water (?:filling )?stations?|bring my own.*water", re.I),
+         [("operations", "Consistent with, but does not prove, a guest-service and heat-readiness gap; verify water availability on site.")]),
+        ("Service responsiveness and value",
+         re.compile(r"poor customer.?service|no answer|assistance.*never|not worth|high price|\$\d+|paid over", re.I),
+         [("operations", "Consistent with, but does not prove, a service-response or value-expectation gap; compare against staffing and service logs.")]),
+        ("Golf cart reliability / GPS controls",
+         re.compile(r"cart.*(?:gps|shut|work)|gps.*(?:cart|work)|push our carts", re.I),
+         [("operations", "Consistent with, but does not prove, a cart reliability or support-response issue; inspect fleet fault records.")]),
+        ("Temporary greens and pre-arrival disclosure",
+         re.compile(r"temporary greens?|sanded|informed.*before|before we got there", re.I),
+         [("course_condition", "Consistent with, but does not prove, a course-condition communication gap; verify booking and pre-arrival notices.")]),
     ]
 
     def _themes(self, payload: dict) -> ReviewThemes:
         reviews = payload.get("reviews", [])
         recent_negative = [r for r in reviews
-                           if (r.get("rating") or 5) <= 3 and (r.get("days_ago") is None or r["days_ago"] <= 92)]
+                           if (r.get("rating") or 5) <= 3
+                           and r.get("days_ago") is not None
+                           and 0 <= r["days_ago"] <= 92]
         themes, anecdotes = [], []
         for name, rx, links in self._THEME_RULES:
             hits = [r for r in recent_negative if rx.search(r.get("text", ""))]
@@ -546,6 +691,8 @@ class ResilientProvider:
             result = self._live.generate(**kwargs)
             _fallback_reason = None
             return result
+        except ModelBudgetExceeded:
+            raise
         except Exception as e:  # transport/auth/provider failure → labelled fallback
             _fallback_reason = f"{type(e).__name__}: {str(e)[:120]}"
             return self._fixture.generate(**kwargs)
@@ -556,6 +703,8 @@ class ResilientProvider:
             result = self._live.investigate(**kwargs)
             _fallback_reason = None
             return result
+        except ModelBudgetExceeded:
+            raise
         except Exception as e:
             _fallback_reason = f"{type(e).__name__}: {str(e)[:120]}"
             out = self._fixture.investigate(**kwargs)
@@ -567,6 +716,10 @@ class ResilientProvider:
         # No fixture fallback: a fabricated description of a photo nobody looked
         # at is worse than an error. The caller surfaces the failure instead.
         return self._live.describe_image(**kwargs)
+
+    def describe_media(self, **kwargs):
+        # Media evidence has the same no-fabricated-fallback rule as photos.
+        return self._live.describe_media(**kwargs)
 
 
 def get_provider():
@@ -583,10 +736,14 @@ def provider_status() -> dict:
     p = get_provider()
     if p.name == "gemini":
         route = "Vertex AI (service account)" if config.GEMINI_VERTEX_PROJECT else "Gemini API key"
-        status = {"active_provider": p.name, "reason": f"live via {route}"}
+        status = {"active_provider": p.name, "configured_provider": "gemini",
+                  "reason": f"live via {route}"}
         if _fallback_reason:
+            status["active_provider"] = "fixture"
             status["degraded"] = True
             status["reason"] = f"configured via {route} but last call fell back to fixture ({_fallback_reason})"
         return status
-    return {"active_provider": p.name,
-            "reason": "Gemini not configured — deterministic fixture engine active (labelled)"}
+    explicit = config.LLM_PROVIDER != "gemini"
+    return {"active_provider": p.name, "configured_provider": config.LLM_PROVIDER,
+            "reason": ("Deterministic fixture engine explicitly selected (labelled)" if explicit
+                       else "Gemini not configured — deterministic fixture engine active (labelled)")}

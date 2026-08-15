@@ -4,6 +4,11 @@ An evidence-governed AI agent for franchise and venue field audits. Built for th
 BroadPeak AI Engineer technical assessment, with Wolf Creek Golf Club (Atlanta)
 as the reference location.
 
+Submission artifact: [`output/pdf/Field_Intelligence_Assessment_Summary.pdf`](output/pdf/Field_Intelligence_Assessment_Summary.pdf)
+(two pages, as required). The editable source is [`docs/SUMMARY.md`](docs/SUMMARY.md);
+deeper decisions and AI-tool usage remain in `docs/adr/` and
+`docs/ai-development-log.md`.
+
 **One sentence:** raw audit input goes in; the agent investigates with read-only
 tools, argues against its own conclusions, and produces clarifying questions or
 evidence-gated findings that only a human can approve — while public customer
@@ -18,10 +23,11 @@ uvicorn server.app:app --port 8000
 # open http://127.0.0.1:8000
 ```
 
-Without keys the app runs in labelled fixture mode: a deterministic policy
-engine stands in for Gemini and a cached review sample stands in for the Places
-API. Every element on screen declares its provenance (see the Portfolio pulse
-"What's live vs simulated" panel).
+Without keys the app still runs end-to-end: a labelled deterministic policy
+engine stands in for Gemini, while Wolf Creek customer intelligence uses a
+timestamped, anonymized 362-review assessment snapshot. No BroadPeak credential
+or asset is required. Every element on screen declares its provenance (see the
+Portfolio pulse "What's live vs simulated" panel).
 
 ## Live mode
 
@@ -32,10 +38,10 @@ pip install google-genai
 
 - `GEMINI_API_KEY` switches analysis to `gemini-2.5-flash` with schema-enforced
   structured output (validation + one retry on schema violation).
-- `GOOGLE_MAPS_API_KEY` switches the review sample to the Places API (New):
-  the location is resolved once to a stable Place ID, fields are requested via
-  field masks, and the sample is always labelled *Google-selected, max five,
-  not statistically representative*.
+- `GOOGLE_MAPS_API_KEY` enables the diagnostic Places API (New) source: the
+  location is resolved once to a stable Place ID and fields use explicit masks.
+  Places only returns a small Google-selected sample, so the assessment snapshot
+  remains the coverage-fit source for Wolf Creek analysis.
 - Provider failure degrades to the cached/fixture twin — the demo cannot break.
 
 ## The demo in five moments
@@ -50,15 +56,36 @@ pip install google-genai
 3. **Human governance** — approve / edit / reject / dispute in the workbench.
    Approval is the only path to a corrective action. Every decision is an
    append-only audit-log entry.
-4. **Customer signals with honesty** — recurring negative review themes linked
-   to audit categories with "consistent with, but does not prove" language, an
-   n≤5 badge, and a ~3-month window. One mention is an anecdote, never a theme.
-5. **The platform, not the assignment** — switch the tenant picker to the
+4. **Customer signals with honesty** — all 362 collected ratings are counted,
+   then filtered locally to recent (≤92 days), low-rating (≤3★), written reviews.
+   Recurring themes use "consistent with, but does not prove" language. One
+   mention is an anecdote, never a theme.
+5. **Closed-loop resolution** — recurring themes create idempotent, assigned
+   triage tickets. A staff member must validate the issue with a before image,
+   submit an after image, and a manager independently verifies closure before a
+   public owner reply can be drafted.
+6. **Competitive edge** — 1,235 anonymized reviews across three nearby Atlanta
+   public courses produce aggregate positive-theme rates, relative strengths,
+   and supported operating experiments. The cohort and limits are visible.
+7. **The platform, not the assignment** — switch the tenant picker to the
    Al Quoz EV & Delivery Depot (a labelled fixture) and run the identical
    pipeline against EV-specific standards. Multi-tenancy shown, not claimed.
    Also see the Digital Truth monitor: a real, cited conflict between Wolf
    Creek's own web channels (yardage and green surface), verified 2026-08-13
    and framed as an opportunity for the Director of Golf — not a violation.
+
+### Field issue lifecycle
+
+Free-form reports and the area guide converge on one record instead of creating
+parallel, contradictory work. Clarification uses the complete ordered answer
+history, allows only one open question per observation, and stops after two text
+turns. A reported issue then requires an explicitly linked photo. The photo is
+stored as evidence but labelled `PHOTO_ATTACHED_PENDING_REVIEW`; attachment is
+not treated as proof. Once a grounded candidate exists, the matching guide item
+is reconciled as reviewer-required and an idempotent ticket is created with an
+ID, demo assignee, due date and `PENDING_VALIDATION` status. If no controlled
+standard fits, the report is preserved and routed as an operational concern
+without inventing a compliance finding.
 
 ## How the agent actually works
 
@@ -71,10 +98,13 @@ Analysis runs in two phases with different capabilities (ADR-009):
 2. **Decide** — tools off, schema enforced. It sees its own transcript and
    returns a validated `AnalysisResult`.
 
-Then, before a human sees anything, **three challengers attack each candidate
-finding in parallel** (ADR-011) — evidence sufficiency, franchisee advocate,
-standards fit. Two overturn votes and it becomes a clarifying question instead of
-a finding. Adjudication is a deterministic vote count, not a fourth model.
+During independent review, **three challengers can attack each candidate
+finding on demand** (ADR-011) — evidence sufficiency, franchisee advocate and
+standards fit. Deferring them keeps the field capture loop responsive; they run
+concurrently on Postgres and sequentially on the SQLite POC to avoid cost-ledger
+write locks. Two overturn votes turn the candidate into a clarifying question.
+Adjudication is a deterministic vote count, not a fourth model; unavailable
+lenses fail closed.
 
 Four gates stand between the model and a reviewer:
 
@@ -106,6 +136,8 @@ server/
   agent/challenge.py       # adversarial panel + deterministic adjudication
   connectors/sources.py    # parallel multi-source fan-out, ranked by trust
   connectors/places.py     # Google Places (New), field masks, fixture twin
+  connectors/review_snapshot.py # anonymized, locally filtered assessment snapshot
+  connectors/benchmark.py # aggregate competitor strengths and opportunity gaps
   connectors/osm.py        # OpenStreetMap — keyless entity resolution
   connectors/scraper.py    # public-web collection — quarantined, OFF by default
   evals/runner.py          # 16 behavioural cases, N repeats, LLM judge, release gate
@@ -127,11 +159,14 @@ still context.
 | 4 | operator's own export | yes | the production path; BroadPeak owns these listings |
 | 3 | Google Places (New) | yes | max ~5 Google-selected; not representative |
 | 2 | OpenStreetMap | **no** | keyless, free, independent entity resolution |
-| 1 | public-web collection | yes | OFF by default, cache-first, never sole basis |
+| 1 | assessment snapshot | yes | one-off, anonymized, coverage-fit; context only |
+| 1 | live public-web collection | yes | OFF by default, cache-first, never request-path |
 
 A failing source degrades the result and is shown as such; it never breaks the
-request. There is no free source of per-business reviews — that is stated rather
-than papered over.
+request. For this POC the complete snapshots were collected once outside the
+request path with a pinned open-source collector, then privacy-minimized. The
+production path is an operator-owned export or authorized Business Profile
+access, not indefinite scraping.
 
 ## Deploy
 
@@ -189,10 +224,20 @@ recurrence detection, and re-analysis idempotency.
 
 ## Known limitations (POC honesty)
 
-- Standards are representative demo standards (real ones requested from
-  BroadPeak; the layer is configurable by tenant).
+- Wolf Creek's guide separates sourced federal/Georgia/Fulton requirements,
+  conditional requirements, Georgia golf-industry BMPs, venue-published policy,
+  and representative operating prompts. Every sourced check links to its basis
+  and applicability caveat. BroadPeak supplied no controlled internal standard
+  pack or credentials, so field responses remain evidence for human review—not
+  legal determinations. The layer is configurable by tenant.
+- The per-visit model-call budget is visible and recoverable: a consultant may
+  approve up to two small extensions, each retained in the audit trail. Evidence
+  is saved before analysis, so the cost pause never discards a capture.
 - The fixture LLM engine is deliberately conservative keyword policy, not
   intelligence — it exists so the demo and evals run keyless and deterministic.
-- No auth (role switcher instead), no photo upload yet (photo-description path
-  per the brief), single-process SQLite.
+- No auth (the role selector is explicitly a demo persona) and single-process
+  SQLite. Live Gemini is required for photo, audio and video understanding;
+  fixture mode refuses to fabricate media interpretations. Operational
+  before/after image uploads are real files with content validation. Production
+  still needs SSO/RBAC, object storage, malware scanning and retention policy.
 - See `docs/adr/` for what changes on the way to production.

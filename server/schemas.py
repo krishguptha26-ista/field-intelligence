@@ -13,34 +13,35 @@ from pydantic import BaseModel, Field
 # ---------- audit analysis ----------
 
 class ClarifySpec(BaseModel):
-    question: str
-    why_needed: str = ""
-    options: list[str] = Field(default_factory=list)
+    question: str = Field(min_length=3, max_length=1200)
+    why_needed: str = Field(default="", max_length=1200)
+    options: list[str] = Field(default_factory=list, max_length=12)
 
 
 class ActionDraft(BaseModel):
-    description: str
-    owner_role: str = "Location Manager"
-    due_in_days: int = 7
-    verification_method: str = "After photo reviewed by manager"
+    description: str = Field(min_length=3, max_length=2000)
+    owner_role: str = Field(default="Location Manager", min_length=2, max_length=120)
+    due_in_days: int = Field(default=7, ge=0, le=365)
+    verification_method: str = Field(
+        default="After photo reviewed by manager", min_length=3, max_length=1000)
 
 
 class FindingDraft(BaseModel):
-    standard_code: str
+    standard_code: str = Field(min_length=1, max_length=80)
     lane: Literal["COMPLIANCE_RISK", "EXPERIENCE_OPS", "GROWTH_OPPORTUNITY"] = "COMPLIANCE_RISK"
-    category: str = "general"
-    title: str
-    consultant_statement: str
-    model_interpretation: str
+    category: str = Field(default="general", min_length=1, max_length=120)
+    title: str = Field(min_length=3, max_length=240)
+    consultant_statement: str = Field(min_length=1, max_length=10000)
+    model_interpretation: str = Field(min_length=3, max_length=5000)
     severity: Literal["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"] = "MEDIUM"
-    confidence: float = 0.5
-    uncertainty_reasons: list[str] = Field(default_factory=list)
-    not_supported: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    uncertainty_reasons: list[str] = Field(default_factory=list, max_length=30)
+    not_supported: list[str] = Field(default_factory=list, max_length=30)
     recommended_action: ActionDraft
 
 
 class ObservationDecision(BaseModel):
-    observation_id: str
+    observation_id: str = Field(min_length=1, max_length=100)
     decision: Literal["CLARIFY", "CANDIDATE_FINDING", "NO_ISSUE"]
     clarify: Optional[ClarifySpec] = None
     finding: Optional[FindingDraft] = None
@@ -48,8 +49,8 @@ class ObservationDecision(BaseModel):
 
 
 class AnalysisResult(BaseModel):
-    decisions: list[ObservationDecision]
-    overall_summary: str = ""
+    decisions: list[ObservationDecision] = Field(max_length=500)
+    overall_summary: str = Field(default="", max_length=5000)
 
 
 # ---------- eval judge ----------
@@ -77,9 +78,9 @@ class Challenge(BaseModel):
     is worse than no panel because it manufactures the appearance of scrutiny.
     """
     verdict: Literal["UPHOLD", "WEAKEN", "OVERTURN"]
-    argument: str                                      # the case, in plain language
-    specific_gap: str = ""                             # the precise weakness, if any
-    what_would_settle_it: str = ""                     # evidence that would resolve the doubt
+    argument: str = Field(min_length=3, max_length=3000)  # the case, in plain language
+    specific_gap: str = Field(default="", max_length=1500)
+    what_would_settle_it: str = Field(default="", max_length=1500)
 
 
 class ChallengeRecord(BaseModel):
@@ -112,6 +113,25 @@ class PhotoDescription(BaseModel):
     unusable_reason: str = ""
 
 
+class MediaDescription(BaseModel):
+    """Neutral extraction contract for consultant audio and short video.
+
+    Like ``PhotoDescription``, this contract deliberately has no standard,
+    severity or compliance-verdict field. Audio is a transcription of a human
+    claim; video can add visible facts. Both still enter the normal
+    investigate -> decide -> human-review pipeline.
+    """
+    transcript: str = Field(default="", max_length=20000)
+    description: str = Field(min_length=1, max_length=10000)
+    observable_facts: list[str] = Field(default_factory=list, max_length=100)
+    timecoded_facts: list[str] = Field(default_factory=list, max_length=100)
+    declined_to_assert: list[str] = Field(default_factory=list, max_length=100)
+    people_visible: bool = False
+    quality_issues: list[str] = Field(default_factory=list, max_length=100)
+    usable_as_evidence: bool = True
+    unusable_reason: str = ""
+
+
 # ---------- review themes ----------
 
 class ThemeCategoryLink(BaseModel):
@@ -120,14 +140,14 @@ class ThemeCategoryLink(BaseModel):
 
 
 class ReviewTheme(BaseModel):
-    theme: str
-    mention_count: int
-    review_ids: list[str] = Field(default_factory=list)
-    linked_categories: list[ThemeCategoryLink] = Field(default_factory=list)
+    theme: str = Field(min_length=2, max_length=240)
+    mention_count: int = Field(ge=1)
+    review_ids: list[str] = Field(default_factory=list, max_length=1000)
+    linked_categories: list[ThemeCategoryLink] = Field(default_factory=list, max_length=30)
 
 
 class ReviewThemes(BaseModel):
-    negative_recent_count: int = 0
+    negative_recent_count: int = Field(default=0, ge=0)
     themes: list[ReviewTheme] = Field(default_factory=list)
     anecdotes: list[str] = Field(default_factory=list)
     sample_caveat: str = ("Google-selected sample; maximum five reviews; "

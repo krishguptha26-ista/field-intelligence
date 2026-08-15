@@ -8,8 +8,9 @@ export default function EvalLab() {
   if (!data.ran) return <div><h1>Eval Lab</h1><div className="card">{data.note}</div></div>;
 
   const gate = data.gate;
-  const colour = (c: any) =>
-    c.passed ? "var(--verified)" : c.flaky ? "var(--amber)" : "var(--risk)";
+  const colour = (c: any) => c.skipped
+    ? "var(--stone-500)"
+    : c.passed ? "var(--verified)" : c.flaky ? "var(--amber)" : "var(--risk)";
 
   return (
     <div>
@@ -24,7 +25,7 @@ export default function EvalLab() {
       <div className="row">
         <div className="card stat">
           <div className="n">{data.passed}/{data.total}</div>
-          <div className="l">passed every run</div>
+          <div className="l">passed every executed run</div>
         </div>
         <div className="card stat">
           <div className="n" style={{ color: data.flaky ? "var(--amber)" : undefined }}>
@@ -33,8 +34,14 @@ export default function EvalLab() {
           <div className="l">flaky (not unanimous)</div>
         </div>
         <div className="card stat">
+          <div className="n" style={{ color: data.skipped ? "var(--stone-500)" : undefined }}>
+            {data.skipped ?? 0}
+          </div>
+          <div className="l">skipped (never counted as pass)</div>
+        </div>
+        <div className="card stat">
           <div className="n">{(data.mean_pass_rate * 100).toFixed(0)}%</div>
-          <div className="l">mean pass rate</div>
+          <div className="l">mean executed pass rate</div>
         </div>
         <div className="card stat">
           <div className="n" style={{ fontSize: 15 }}>
@@ -59,19 +66,25 @@ export default function EvalLab() {
 
       <div className="notice" style={{ margin: "14px 0 6px" }}>
         Last run {new Date(data.at).toLocaleString()} · {data.provider?.reason}
+        {data.artifact?.git_commit && (
+          <> · commit <span className="mono">{data.artifact.git_commit.slice(0, 8)}</span>
+            {data.artifact.git_dirty ? " + uncommitted changes" : ""}</>
+        )}
       </div>
 
       {data.cases.map((c: any) => (
         <div key={c.id} className="card" style={{ borderLeft: `3px solid ${colour(c)}` }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
             <div>
-              <span className={c.passed ? "pass" : "fail"}>
-                {c.passed ? "PASS" : c.flaky ? "FLAKY" : "FAIL"}
+              <span className={c.passed ? "pass" : c.skipped ? "" : "fail"}>
+                {c.status ?? (c.passed ? "PASS" : c.flaky ? "FLAKY" : "FAIL")}
               </span>
               &nbsp;<b>{c.name}</b>
             </div>
             <span className="mono" style={{ color: "var(--stone-500)" }}>
-              {(c.pass_rate * 100).toFixed(0)}% over {c.runs} run{c.runs === 1 ? "" : "s"}
+              {c.skipped
+                ? `${c.attempts ?? 1} skipped attempt${(c.attempts ?? 1) === 1 ? "" : "s"}`
+                : `${(c.pass_rate * 100).toFixed(0)}% over ${c.runs} run${c.runs === 1 ? "" : "s"}`}
             </span>
           </div>
           <div className="notice mono" style={{ marginTop: 4 }}>{c.detail}</div>

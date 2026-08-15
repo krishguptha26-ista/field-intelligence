@@ -62,6 +62,10 @@ CONTACT_URL = os.getenv("CONTACT_URL", "https://github.com/fieldintel-poc")
 # personality made operational. Off is for latency-sensitive demos and for
 # measuring what the panel actually changes (see the eval harness).
 ENABLE_CHALLENGE_PANEL = _bool("ENABLE_CHALLENGE_PANEL", True)
+# Three live challenger calls are valuable before a binding decision, but make
+# capture painfully slow on SQLite/POC. Keep the feature available on demand in
+# review; opt into capture-time execution for production experiments.
+CHALLENGE_PANEL_DURING_CAPTURE = _bool("CHALLENGE_PANEL_DURING_CAPTURE", False)
 
 # Scraped public-web signals are OFF unless explicitly enabled. See ADR-010:
 # the capability exists, the default does not assume anyone's legal position.
@@ -69,8 +73,13 @@ ENABLE_SCRAPED_SIGNALS = _bool("ENABLE_SCRAPED_SIGNALS", False)
 
 APP_ENV = os.getenv("APP_ENV", "development")
 APP_DEMO_MODE = _bool("APP_DEMO_MODE", True)
+CORS_ORIGINS = (["*"] if APP_ENV != "production" else
+                [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",")
+                 if origin.strip()])
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{ROOT / 'var' / 'fieldintel.db'}")
 MAX_LLM_CALLS_PER_AUDIT = int(os.getenv("MAX_LLM_CALLS_PER_AUDIT", "25"))
+LLM_BUDGET_EXTENSION_CALLS = int(os.getenv("LLM_BUDGET_EXTENSION_CALLS", "15"))
+MAX_LLM_BUDGET_ACKNOWLEDGEMENTS = int(os.getenv("MAX_LLM_BUDGET_ACKNOWLEDGEMENTS", "2"))
 
 FIXTURES_DIR = ROOT / "data" / "fixtures"
 GOLDEN_DIR = ROOT / "data" / "golden"

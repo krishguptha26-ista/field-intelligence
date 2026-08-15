@@ -1,94 +1,100 @@
-# ADR-010: Plural signal sources, ranked by trust; scraping quarantined
+# ADR-010: Plural signal sources, ranked by trust; collection outside request paths
+
 Status: accepted
 
 ## Context
 
-This one was decided by an outage rather than a whiteboard.
+Google Places (New) returns only a small Google-selected review sample. During
+the build it also failed when the API was disabled or the key restricted the
+wrong Places product. Neither problem can be repaired from application code.
+BroadPeak supplied no Business Profile credentials, review export, standards or
+other private asset for this assessment.
 
-For most of this build the Google Places API returned 403. First
-`SERVICE_DISABLED` — the API was not enabled on the project. Then, once enabled,
-`API_KEY_SERVICE_BLOCKED` — the key's API restriction list contained the legacy
-"Places API" but not "Places API (New)", which are separate entries granting
-access to different endpoints.
-
-Both were console settings. Neither was fixable from inside the application, and
-during that time the product had no independent way to say anything about the
-public record. **A product whose evidence layer can be switched off by someone
-else's configuration screen is a demo waiting to fail.**
-
-A survey of the alternatives found an asymmetry worth designing around:
-
-- **Place data is solved and free.** OpenStreetMap (Nominatim for geocoding,
-  Overpass for POI queries) is keyless, has no quota, and is independently
-  maintained. It resolved Wolf Creek to relation 142995 with a matching street
-  number.
-- **Reviews are not.** No free or open source of per-business reviews exists.
-  BizData (OSM-derived) explicitly excludes them. Foursquare puts tips and
-  ratings behind Premium with no free tier. The Tripadvisor Content API is
-  deprecated. Google removed the Places free tier in February 2025.
+OpenStreetMap solves independent place resolution, but it has no reviews. A
+full owned-location review feed is available in production through an authorized
+Google Business Profile integration or an operator export, neither of which is
+available to this POC.
 
 ## Decision
 
-**Sources are plural, queried concurrently, and ranked.**
+Sources are plural, queried concurrently, and ranked.
 
-| Trust class | Source | Notes |
+| Trust class | Source | Use |
 |---|---|---|
-| `OPERATOR_OWNED` (4) | the operator's own listing export | Highest trust; the production path — BroadPeak owns these listings through Google Business Profile |
-| `OFFICIAL_API` (3) | Google Places (New) | Under contract, rate-limited, revocable |
-| `OPEN_DATA` (2) | OpenStreetMap | Keyless, free, independent. Entity resolution and place facts. **No reviews exist in OSM** |
-| `SCRAPED_WEB` (1) | public web collection | Off by default. Cache-first. Never the sole basis for anything |
+| `OPERATOR_OWNED` (4) | operator export / authorized Business Profile data | preferred production review source |
+| `OFFICIAL_API` (3) | Google Places (New) | listing facts and a small diagnostic review sample |
+| `OPEN_DATA` (2) | OpenStreetMap | independent entity resolution; no reviews |
+| `SCRAPED_WEB` (1) | timestamped assessment snapshots | POC customer context only |
 
 Two rules hold regardless of source:
 
-- **Trust rank never converts sentiment into proof.** The ladder ranks how much
-  we believe the data is what it claims to be, not what it may be used for. A
-  five-star review from the highest-trust source is still context.
-- **A failing source degrades the result; it never breaks the request.** The
-  fan-out returns partial results with each source's status attached, because
-  "three of four sources answered, and here is which one" is information a
-  reviewer is entitled to.
+- Trust rank never converts sentiment into proof. Reviews may open triage or
+  suggest a question; they cannot create a compliance finding.
+- A failing source degrades the result and remains visible; it does not break
+  the request or silently blend its rows with another provenance.
 
-**Scraping is built, isolated, and off.** `connectors/scraper.py` is quarantined
-in its own module, gated behind `ENABLE_SCRAPED_SIGNALS` (default false),
-cache-first so no live demo depends on a collection completing, and stamped
-`SCRAPED_PUBLIC_WEB` at the bottom of the ladder. The browser it needs is
-deliberately absent from the deployed image.
+### Assessment snapshot
 
-The reasoning is not squeamishness. Collection that depends on a third party's
-terms is a business decision with legal surface, and a product whose entire
-thesis is evidence governance has no business quietly making that call on an
-operator's behalf. The capability exists so the decision can be made; the default
-does not presume it.
+The POC uses `YasogaN/google-maps-review-scraper` pinned at commit
+`a922af80538afb25c339ab603e256f15db429116` for one-off collection outside the
+application request path. The import step removes reviewer names, profile IDs,
+profile images and review photos, hashes review IDs, retains only rating, text,
+publication time and owner-response presence, and stamps every row
+`SCRAPED_PUBLIC_WEB`.
 
-Recorded honestly, because it is the more useful finding: on the reference
-location the collector returns **nothing**. The place page served to a headless
-browser has only "Overview" and "About" tabs — no Reviews tab at all. It is the
-most fragile component in the system, it depends on a DOM that changes without
-notice, and it will break.
+The verified Wolf Creek artifact contains 362 reviews:
+
+| Rating | Count |
+|---:|---:|
+| 1★ | 42 |
+| 2★ | 17 |
+| 3★ | 28 |
+| 4★ | 84 |
+| 5★ | 191 |
+
+The product calculates its ≤92-day, ≤3★, written-review window locally. This is
+why the five positive Places reviews no longer hide the low-rating signal.
+
+Three nearby Atlanta public-course snapshots are used for a directional
+competitor benchmark: Brown's Mill (481), Alfred Tup Holmes (366), and Chastain
+Park (388), or 1,235 comparator rows. Only aggregate positive-theme rates and
+hashed evidence references reach the API. The UI explicitly says the manually
+selected three-course cohort is not representative market research.
+
+Live browser collection remains quarantined behind configuration, cache-first,
+and absent from the normal page request. The snapshot is reproducible through
+`scripts/import_reviews_snapshot.py`; it is not silently refreshed.
 
 ## Consequences
 
-- One `SignalResult` shape covers every source, so adding one is a registry entry.
-- The parallel fan-out surfaced a real bug immediately: live and fixture reviews
-  were blending into a single sample labelled `LIVE_API`. One sample now carries
-  one provenance, and `case_provenance_not_mixed` in the eval suite keeps it that
-  way. A viewer who spots one fixture name inside "live" data is right to
-  distrust every other label on the screen.
-- OSM cross-checks produce genuine findings for free: independent entity
-  confirmation, and a cross-channel name variance (the operator trades as "Wolf
-  Creek Golf **Club**"; the public map record says "Golf **Course**") that feeds
-  the digital-truth card.
-- Overpass was tried and dropped from the live path — all three public mirrors
-  returned 504 during testing. Nominatim is reliable and answers the question
-  that matters.
+- Wolf Creek review analytics work with no BroadPeak dependency or secret.
+- Source selection is based on ownership first, then coverage fitness; the
+  assessment snapshot may be selected over Places while retaining its lower
+  trust label.
+- Every selected sample has one provenance. The eval suite rejects a mixed or
+  mislabeled sample.
+- Review-derived tickets require on-site validation and before/after evidence.
+- Taxonomy gaps enter a human approval queue; review content never silently
+  retrains a model or rewrites a standard.
+- A later comparable snapshot can measure directional rating movement, but the
+  system reports `BASELINE_ONLY` until that data exists and makes no ROI claim.
+
+## Production transition
+
+Use an operator-owned export or authorized Google Business Profile integration
+for owned locations, with consent, retention limits, deletion handling and API
+terms reviewed by counsel. Public owner replies require that authorization.
+Google does not provide a reviewer's private contact details, so private outreach
+cannot be promised; the app drafts a public owner response only after verified
+closure.
 
 ## Rejected
 
-- **Scraping as the primary review source.** Fragile, ToS-adjacent, needs a
-  ~150MB browser that does not fit the deploy target, and it would be the single
-  component a technical reviewer distrusts in a product about evidence.
-- **Dropping reviews entirely when Places is down.** Reviews are context; losing
-  them costs nothing in finding quality — but losing the *place facts* costs
-  entity resolution, and OSM fixes that for free.
-- **A paid review aggregator.** Solves a POC problem by spending money on the
-  wrong layer. The operator already owns this data.
+- Places' five selected reviews as the analytical dataset: too small and
+  selection-biased for theme claims.
+- Live scraping in a page request: fragile, slow, difficult to govern and a
+  third-party terms risk.
+- Review sentiment as proof of a violation: customer context is not field
+  evidence.
+- Automatic hourly retraining or taxonomy mutation: unreviewed drift would make
+  standards and behaviour unauditable.

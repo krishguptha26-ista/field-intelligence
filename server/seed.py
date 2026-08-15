@@ -1,8 +1,9 @@
 """Seed data: two fixture tenants proving the multi-tenant engine.
 
-Everything here is labelled DEMO_FIXTURE / REPRESENTATIVE_DEMO_STANDARD.
-Wolf Creek location identity (name/address) is public fact; standards are
-representative until BroadPeak supplies real ones (requested by email 12 Aug).
+Fixtures remain labelled DEMO_FIXTURE / REPRESENTATIVE_DEMO_STANDARD. Wolf
+Creek's public identity and external checklist sources are separately labelled;
+BroadPeak has not supplied its controlled internal standards (requested by email
+12 Aug).
 """
 from __future__ import annotations
 
@@ -11,17 +12,67 @@ from datetime import datetime, timedelta, timezone
 from .models import (Action, AuditSession, EvidenceItem, ExternalSignal,
                      Finding, Location, Observation, SessionLocal, Standard,
                      Tenant, Zone, init_db, uid)
+from .regulatory import WOLF_CREEK_STANDARD_DEFS
 
 
-def _std(tenant: str, cat: str, code: str, text: str, sev: str = "MEDIUM") -> Standard:
+def _std(tenant: str, cat: str, code: str, text: str, sev: str = "MEDIUM",
+         source_label: str = "REPRESENTATIVE_DEMO_STANDARD") -> Standard:
     return Standard(id=uid("req"), tenant_id=tenant, category=cat, code=code,
-                    text=text, severity_default=sev)
+                    text=text, severity_default=sev, source_label=source_label)
+
+
+def _sync_wolf_creek_pack(db) -> None:
+    """Add missing sourced checks; published versions are never rewritten in place."""
+    tenant = db.get(Tenant, "broadpeak-demo")
+    location = db.get(Location, "wolf-creek-atlanta")
+    if tenant is None or location is None:
+        return
+    for definition in WOLF_CREEK_STANDARD_DEFS:
+        row = db.query(Standard).filter_by(
+            tenant_id=tenant.id, code=definition["code"]
+        ).first()
+        values = {
+            "category": definition["category"],
+            "text": definition["text"],
+            "severity_default": definition["severity"],
+            "source_label": definition["source_label"],
+            "active": True,
+        }
+        if row is None:
+            db.add(Standard(id=uid("req"), tenant_id=tenant.id,
+                            code=definition["code"], **values))
+    if db.query(Zone).filter_by(
+        location_id=location.id, name="Maintenance & chemical storage"
+    ).first() is None:
+        db.add(Zone(id=uid("zone"), tenant_id=tenant.id, location_id=location.id,
+                    name="Maintenance & chemical storage", required=True,
+                    privacy_level="NORMAL"))
+    db.commit()
+
+
+def _migrate_photo_attachment_labels(db) -> None:
+    """Narrow legacy wording that implied an attached photo proved the issue."""
+    changed = False
+    for audit in db.query(AuditSession).all():
+        rows = list(audit.checklist_responses or [])
+        next_rows = []
+        for row in rows:
+            if row.get("verification_state") == "PHOTO_SUPPORTED":
+                row = {**row, "verification_state": "PHOTO_ATTACHED_PENDING_REVIEW"}
+                changed = True
+            next_rows.append(row)
+        if next_rows != rows:
+            audit.checklist_responses = next_rows
+    if changed:
+        db.commit()
 
 
 def seed() -> None:
     init_db()
     db = SessionLocal()
     if db.query(Tenant).count() > 0:
+        _sync_wolf_creek_pack(db)
+        _migrate_photo_attachment_labels(db)
         _seed_history(db)   # additive: back-fills history into an existing demo db
         db.close()
         return
@@ -31,7 +82,8 @@ def seed() -> None:
     # ---------------- Tenant 1: Wolf Creek (golf) ----------------
     t1 = Tenant(id="broadpeak-demo", name="BroadPeak Sports & Entertainment — Golf", kind="venue")
     l1 = Location(id="wolf-creek-atlanta", tenant_id=t1.id, name="Wolf Creek Golf Club",
-                  address="3000 Union Rd SW, Atlanta, GA 30331", lat=33.6896, lng=-84.5341,
+                  address="3000 Union Rd SW, Atlanta, GA 30331",
+                  lat=33.6801284, lng=-84.5802555,
                   meta={"entity_resolution": "name+address; Place ID persisted on first live lookup"})
     zones1 = ["Arrival & entrance signage", "Parking / accessible parking", "Clubhouse exterior",
               "Lobby / check-in", "Pro shop", "Restrooms", "Food & beverage area",
@@ -47,6 +99,10 @@ def seed() -> None:
         _std(t1.id, "operations", "OPS-02", "Pace-of-play monitoring is active; intervals per the daily tee sheet; deviations logged with cause."),
         _std(t1.id, "food_safety", "FNB-01", "Food-contact surfaces cleaned and sanitised per schedule; temperature logs current for hot/cold holding.", "CRITICAL"),
         _std(t1.id, "course_condition", "CRS-01", "Greens, tees and fairways maintained per agronomy plan; hazards (standing water, damage) flagged and communicated to the starter."),
+    ] + [
+        _std(t1.id, item["category"], item["code"], item["text"],
+             item["severity"], item["source_label"])
+        for item in WOLF_CREEK_STANDARD_DEFS
     ]
 
     # ---------------- Tenant 2: EV & Delivery depot (mobility) ----------------
@@ -65,7 +121,13 @@ def seed() -> None:
         _std(t2.id, "cleanliness", "EVC-01", "Bays and handover point free of debris, spills and obstructions."),
     ]
 
-    db.add_all([t1, l1, t2, l2])
+    # Explicit dependency order matters because the POC models deliberately do
+    # not carry heavy ORM relationship machinery. Foreign-key enforcement is on
+    # in SQLite, so do not rely on SQLAlchemy inferring order from scalar IDs.
+    db.add_all([t1, t2])
+    db.commit()
+    db.add_all([l1, l2])
+    db.commit()
     for i, z in enumerate(zones1):
         db.add(Zone(id=f"z1_{i:02d}", tenant_id=t1.id, location_id=l1.id, name=z,
                     privacy_level="HIGH" if "Restroom" in z else "NORMAL"))
@@ -73,6 +135,7 @@ def seed() -> None:
         db.add(Zone(id=f"z2_{i:02d}", tenant_id=t2.id, location_id=l2.id, name=z,
                     privacy_level="HIGH" if "rest" in z.lower() else "NORMAL"))
     db.add_all(stds1 + stds2)
+    db.commit()
 
     # ---------------- Fixture review sample (used when no Maps key / offline) ----------------
     fixture_reviews = [
@@ -92,6 +155,8 @@ def seed() -> None:
                      "fixture_reason": "used when GOOGLE_MAPS_API_KEY absent or offline"}))
 
     db.commit()
+    _sync_wolf_creek_pack(db)
+    _migrate_photo_attachment_labels(db)
     _seed_history(db)
     db.close()
 
@@ -140,7 +205,13 @@ def _closed_history(db, *, tenant: str, location: str, days_ago: int, category: 
                              "by": "Location Manager", "provenance": "SIMULATED_OUTCOME"}]
                            if verified else []),
                  created_at=at, updated_at=at)
-    db.add_all([audit, ob, ev, finding, act])
+    db.add(audit)
+    db.flush()
+    db.add_all([ob, ev])
+    db.flush()
+    db.add(finding)
+    db.flush()
+    db.add(act)
 
 
 def _seed_history(db) -> None:
