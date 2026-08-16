@@ -270,6 +270,10 @@ def _deliver_login_notification(event_id: str | None, payload: dict) -> None:
             config.LOGIN_NOTIFICATION_WEBHOOK_URL,
             json=payload,
             timeout=5.0,
+            # Google Apps Script web apps return a 302 to their execution
+            # result after doPost has run. Follow it so a successful email is
+            # recorded as SENT instead of a false HTTPStatusError.
+            follow_redirects=True,
         )
         response.raise_for_status()
         status = "SENT"

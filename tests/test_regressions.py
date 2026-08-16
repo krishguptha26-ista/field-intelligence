@@ -210,6 +210,7 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertTrue(console.json()["access_activity"]["webhook_configured"])
 
         webhook.assert_called_once()
+        self.assertTrue(webhook.call_args.kwargs["follow_redirects"])
         payload = webhook.call_args.kwargs["json"]
         serialised = json.dumps(payload)
         self.assertNotIn("Broadpeak-demo-user", serialised)
