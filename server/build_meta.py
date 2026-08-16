@@ -20,6 +20,11 @@ def _runtime_files() -> tuple[str, ...]:
     )
 
 
+def _normalised_source_bytes(path: Path) -> bytes:
+    """Hash source consistently across Windows and Linux checkouts."""
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
 def source_fingerprint() -> str:
     """Hash the server code that defines the evaluated runtime contract.
 
@@ -34,6 +39,6 @@ def source_fingerprint() -> str:
         path = _ROOT / relative
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        digest.update(_normalised_source_bytes(path))
         digest.update(b"\0")
     return digest.hexdigest()[:16]

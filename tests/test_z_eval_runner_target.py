@@ -13,7 +13,7 @@ os.environ["LLM_PROVIDER"] = "fixture"
 os.environ["GEMINI_API_KEY"] = ""
 
 from server.evals import runner
-from server.build_meta import _runtime_files
+from server.build_meta import _normalised_source_bytes, _runtime_files
 
 
 BUILD = runner.source_fingerprint()
@@ -68,6 +68,15 @@ class EvaluationTargetTests(unittest.TestCase):
         runtime_files = set(_runtime_files())
         self.assertIn("server/blob_store.py", runtime_files)
         self.assertIn("server/config.py", runtime_files)
+
+    def test_build_identity_normalises_cross_platform_line_endings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "module.py"
+            source.write_bytes(b"first\r\nsecond\r\n")
+            windows_bytes = _normalised_source_bytes(source)
+            source.write_bytes(b"first\nsecond\n")
+            linux_bytes = _normalised_source_bytes(source)
+        self.assertEqual(windows_bytes, linux_bytes)
 
     def test_api_url_is_explicit_and_rejects_ambiguous_targets(self) -> None:
         self.assertEqual(
