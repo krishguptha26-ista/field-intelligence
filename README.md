@@ -33,6 +33,17 @@ timestamped, anonymized 362-review assessment snapshot. No BroadPeak credential
 or asset is required. Every element on screen declares its provenance (see the
 Portfolio pulse "What's live vs simulated" panel).
 
+### Fast reviewer path
+
+After signing in, keep **Wolf Creek Golf Club** selected and open
+**Walkthrough → Open showcase audit**. The read-only, clearly labelled fixture
+is a complete product tour: confirmed voice clarification, targeted demo photo
+evidence, 29/29 sourced guide checks, an upheld security case, a recurring
+restroom case awaiting independent verification, and a weak accessibility
+proposal that the human reviewer correctly rejected. Use **Preview workspace
+as** to inspect the same record as Reviewer, Location Operator, Brand Leader or
+Technical Evaluator; each role sees only its part of the handoff.
+
 ## Live mode
 
 ```bash

@@ -35,6 +35,16 @@
 .fi-start h1 { margin: 8px 0; font-size: clamp(34px, 8vw, 55px); }
 .fi-start > p { max-width: 540px; margin: 0 0 24px; color: var(--fi-muted); font-size: 17px; }
 .fi-start-button { width: 100%; min-height: 58px; margin-top: 18px; font-size: 16px; }
+.fi-showcase-card { display: grid; gap: 10px; margin-top: 22px; padding: 22px; border: 1px solid #cdb462; border-radius: 18px; background: linear-gradient(145deg, #fffaf0, #f4ead0); box-shadow: 0 12px 34px rgba(22, 30, 49, .08); }
+.fi-showcase-card > span { color: #765b0b; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.fi-showcase-card h2, .fi-showcase-card p { margin: 0; }
+.fi-showcase-card h2 { font-size: 22px; line-height: 1.2; }
+.fi-showcase-card p, .fi-showcase-card small { color: var(--fi-muted); }
+.fi-showcase-card button { min-height: 50px; border: 0; border-radius: 12px; background: var(--fi-navy); color: #fff; font: inherit; font-weight: 750; cursor: pointer; }
+.fi-record-locked { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; margin: 18px 0; padding: 16px; border: 1px solid #b8d5c3; border-radius: 14px; background: #f1faf4; }
+.fi-record-locked > span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #277247; color: #fff; font-weight: 800; }
+.fi-record-locked b, .fi-record-locked p { display: block; margin: 0; }
+.fi-record-locked p { margin-top: 4px; color: var(--fi-muted); line-height: 1.45; }
 .fi-trust-note { display: grid; gap: 3px; padding: 14px 15px; border-radius: 13px; background: #fff9e8; border: 1px solid #e5cc87; }
 .fi-trust-note b { color: var(--fi-gold-dark); }
 .fi-trust-note span { color: #685d44; font-size: 13px; }

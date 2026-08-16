@@ -81,6 +81,64 @@ class TrustBoundaryTests(unittest.TestCase):
         self.assertEqual(signed_in.status_code, 200, signed_in.text)
         return client
 
+    def test_curated_showcase_is_the_only_visible_seeded_visit_and_is_immutable(self) -> None:
+        visits = self.client.get("/api/audits", params={
+            "tenant_id": "broadpeak-demo",
+            "location_id": "wolf-creek-atlanta",
+        })
+        self.assertEqual(visits.status_code, 200, visits.text)
+        showcase_rows = [row for row in visits.json() if row["is_showcase"]]
+        self.assertEqual(len(showcase_rows), 1)
+        self.assertEqual(showcase_rows[0]["id"], "audit_showcase_wolf_creek")
+        self.assertEqual(showcase_rows[0]["status"], "SUBMITTED")
+        self.assertEqual(showcase_rows[0]["checklist_responses"], 29)
+        self.assertFalse(any(row["status"] == "SHOWCASE_SUPPORT" for row in visits.json()))
+
+        packet = self.client.get("/api/audits/audit_showcase_wolf_creek")
+        self.assertEqual(packet.status_code, 200, packet.text)
+        data = packet.json()
+        self.assertEqual(len(data["questions"]), 3)
+        self.assertTrue(all(row["status"] == "ANSWERED" for row in data["questions"]))
+        self.assertEqual(
+            sorted(row["status"] for row in data["findings"]),
+            ["APPROVED", "APPROVED", "REJECTED"],
+        )
+        self.assertEqual(len(data["field_tickets"]), 2)
+        self.assertEqual(len(data["actions"]), 2)
+
+        mutation = self.client.post(
+            "/api/audits/audit_showcase_wolf_creek/observations",
+            json={"kind": "NOTE", "text": "Must remain read-only", "zone_id": "z1_00"},
+        )
+        self.assertEqual(mutation.status_code, 409, mutation.text)
+
+        tickets = self.client.get(
+            "/api/locations/wolf-creek-atlanta/tickets").json()["tickets"]
+        showcase_tickets = {row["id"]: row for row in tickets
+                            if row["id"].startswith("ticket_showcase_")}
+        self.assertEqual(showcase_tickets["ticket_showcase_security"]["status"],
+                         "CLOSED_VERIFIED")
+        self.assertEqual(showcase_tickets["ticket_showcase_restroom"]["status"],
+                         "RESOLVED_PENDING_VERIFICATION")
+        for row in showcase_tickets.values():
+            self.assertEqual(len(row["before_evidence"]), 1)
+            self.assertEqual(len(row["after_evidence"]), 1)
+            for item in row["before_evidence"] + row["after_evidence"]:
+                rendered = self.client.get(f"/api/photos/{item['digest']}")
+                self.assertEqual(rendered.status_code, 200, rendered.text)
+                self.assertEqual(rendered.headers["content-type"], "image/svg+xml")
+
+        console = self.client.get("/api/console")
+        self.assertEqual(console.status_code, 200, console.text)
+        db = SessionLocal()
+        try:
+            visible_audit_count = (db.query(AuditSession)
+                                   .filter(AuditSession.status != "SHOWCASE_SUPPORT")
+                                   .count())
+        finally:
+            db.close()
+        self.assertEqual(console.json()["totals"]["audits"], visible_audit_count)
+
     def test_shared_demo_login_protects_api_and_sets_browser_headers(self) -> None:
         with TestClient(app) as anonymous:
             denied = anonymous.get("/api/tenants")

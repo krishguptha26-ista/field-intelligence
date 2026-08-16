@@ -166,6 +166,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   }, [caseTicket]);
 
   const currentZone = guide?.zones?.find((zone: any) => zone.id === zoneId);
+  const auditLocked = ["READY_FOR_REVIEW", "SUBMITTED", "COMPLETE"].includes(audit?.status);
   const locationName = ctx.tenants.flatMap((tenant: any) => tenant.locations ?? [])
     .find((location: any) => location.id === ctx.locationId)?.name ?? "this location";
   const requiredZones = guide?.zones?.filter((zone: any) => zone.required) ?? [];
@@ -633,9 +634,18 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <button className="fi-primary fi-start-button" disabled={starting || !guide} onClick={start}>
         {starting ? "Preparing visit…" : `Start ${locationName} walkthrough`}
       </button>
-      {visits.length > 0 && <section className="fi-recent-visits">
+      {visits.find((visit: any) => visit.is_showcase) && <section className="fi-showcase-card">
+        <span>READY-MADE DEMO</span>
+        <h2>See the complete workflow in three minutes.</h2>
+        <p>Open a submitted audit with voice clarification, linked evidence, sourced checks, human decisions, corrective actions and independent verification.</p>
+        <button type="button" onClick={() => ctx.setAuditId(visits.find((visit: any) => visit.is_showcase).id)}>
+          Open showcase audit
+        </button>
+        <small>Illustrative data is clearly labelled. The record is read-only.</small>
+      </section>}
+      {visits.some((visit: any) => !visit.is_showcase) && <section className="fi-recent-visits">
         <div><b>Recent visits</b><span>Resume an unfinished walkthrough or inspect a submitted record.</span></div>
-        {visits.slice(0, 6).map((visit: any) => <article key={visit.id}>
+        {visits.filter((visit: any) => !visit.is_showcase).slice(0, 6).map((visit: any) => <article key={visit.id}>
           <button type="button" className="fi-visit-open" onClick={() => ctx.setAuditId(visit.id)}>
             <span>{new Date(visit.created_at).toLocaleString()}</span>
             <b>{String(visit.status).split("_").join(" ")}</b>
@@ -774,7 +784,10 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <span><b>High-privacy area</b>I confirm there are no people, identifying details or private information in frame.</span>
     </label>}
 
-    <section className="fi-composer" data-tour="capture" aria-label="Capture an observation">
+    {auditLocked ? <section className="fi-record-locked" role="status">
+      <span aria-hidden="true">✓</span><div><b>Submitted record · read only</b>
+        <p>Evidence and guide responses are locked. Explore each area, review the handoff, then use <i>Preview workspace as</i> to see reviewer and resolution views.</p></div>
+    </section> : <section className="fi-composer" data-tour="capture" aria-label="Capture an observation">
       <div className="fi-composer-intro"><span className="fi-orb">AI</span><div><b>Tell me what you notice.</b><span>Capture now and keep walking. I will structure it in the background.</span></div></div>
       <VoiceRecorder disabled={Boolean(budgetGate) || (currentZone?.privacy_level === "HIGH" && !privacyAttested)}
         onRecorded={async file => { queueMedia("AUDIO", file); }} />
@@ -818,7 +831,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         <div><button onClick={() => setVoiceReviewDeferred(true)}>Review later</button>
           <button className="fi-primary" disabled={voiceText.trim().length < 3} onClick={confirmVoice}>Confirm and assess</button></div>
       </div>}
-    </section>
+    </section>}
 
     {currentReceipts.map(receipt => <section className="fi-capture-receipt" role="status" key={receipt.id}>
       <span className="fi-receipt-mark" aria-hidden="true">✓</span>
@@ -1124,6 +1137,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
 
     <details className="fi-visit-options">
       <summary>Visit options</summary>
+      {auditLocked && <button type="button" onClick={() => ctx.setAuditId(null)}>Back to visit list</button>}
       <button type="button" onClick={() => setConfirmNew(true)}>Start a new visit</button>
       {visits.filter((visit: any) => visit.id !== ctx.auditId).slice(0, 5).map((visit: any) =>
         <div className="fi-visit-option-row" key={visit.id}>
@@ -1147,10 +1161,10 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <small>Submitted review packets are retained as immutable audit records.</small>
     </details>
 
-    <details className="fi-evaluator">
+    {!auditLocked && <details className="fi-evaluator">
       <summary>Evaluator shortcuts</summary>
       <div>{(DEMO_INPUTS[ctx.locationId] ?? []).map(([label, kind, value]) =>
         <button key={label} onClick={() => queueTextCapture(kind, value)}>+ {label}</button>)}</div>
-    </details>
+    </details>}
   </div>;
 }

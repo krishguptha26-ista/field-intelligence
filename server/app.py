@@ -748,7 +748,8 @@ def list_audits(tenant_id: str, location_id: str) -> list[dict]:
         raise HTTPException(404, "tenant/location context not found")
     rows = (db.query(AuditSession).filter_by(
         tenant_id=tenant_id, location_id=location_id,
-    ).order_by(AuditSession.created_at.desc()).limit(25).all())
+    ).filter(AuditSession.status != "SHOWCASE_SUPPORT")
+        .order_by(AuditSession.created_at.desc()).limit(25).all())
     out = [{
         "id": row.id,
         "status": row.status,
@@ -756,6 +757,7 @@ def list_audits(tenant_id: str, location_id: str) -> list[dict]:
         "created_at": row.created_at.isoformat(),
         "updated_at": row.updated_at.isoformat(),
         "checklist_responses": len(row.checklist_responses or []),
+        "is_showcase": row.id == "audit_showcase_wolf_creek",
         "can_discard": (
             config.APP_ENV != "production"
             and row.status not in IMMUTABLE_AUDIT_STATUSES
@@ -2629,7 +2631,8 @@ def console() -> dict:
         func.count(ModelCall.id), func.sum(ModelCall.input_tokens),
         func.sum(ModelCall.output_tokens), func.sum(ModelCall.est_cost_usd),
         func.avg(ModelCall.latency_ms)).one()
-    audits = db.query(AuditSession).count()
+    audits = (db.query(AuditSession)
+              .filter(AuditSession.status != "SHOWCASE_SUPPORT").count())
     access_events = (db.query(DemoAccessEvent)
                      .order_by(DemoAccessEvent.created_at.desc()).limit(25).all())
     access_total = db.query(DemoAccessEvent).count()

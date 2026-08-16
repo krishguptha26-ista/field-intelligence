@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from .models import (Action, AuditSession, EvidenceItem, ExternalSignal,
-                     Finding, Location, Observation, SessionLocal, Standard,
-                     Tenant, Zone, init_db, uid)
+from .models import (AuditSession, ExternalSignal, Location, SessionLocal,
+                     Standard, Tenant, Zone, init_db, uid)
 from .regulatory import WOLF_CREEK_STANDARD_DEFS
 
 
@@ -161,96 +160,10 @@ def seed() -> None:
     db.close()
 
 
-def _closed_history(db, *, tenant: str, location: str, days_ago: int, category: str,
-                    std_code: str, title: str, statement: str, action_desc: str,
-                    verified: bool, severity: str = "MEDIUM") -> None:
-    """One prior visit, already reviewed and closed out.
-
-    Fixture history, labelled as such — but it has to be *real rows in the real
-    tables*, not a hard-coded banner. The recurrence detector reads the same
-    findings and actions the live pipeline writes, so if the seeding were fake
-    the badge would never fire. This is the cheapest available proof that the
-    memory is a property of the data model rather than of the demo script.
-    """
-    at = datetime.now(timezone.utc) - timedelta(days=days_ago)
-    std = db.query(Standard).filter_by(tenant_id=tenant, code=std_code).first()
-    audit = AuditSession(id=uid("audit"), tenant_id=tenant, location_id=location,
-                         consultant_name="Prior visit (DEMO_FIXTURE)",
-                         status="COMPLETE", created_at=at, updated_at=at)
-    ob = Observation(id=uid("ob"), tenant_id=tenant, audit_id=audit.id, kind="NOTE",
-                     text=statement, provenance="DEMO_FIXTURE", created_at=at, updated_at=at)
-    ev = EvidenceItem(id=uid("ev"), tenant_id=tenant, location_id=location,
-                      source_type="OBSERVATION", collection_method="FIXTURE",
-                      provenance="DEMO_FIXTURE", trust_class="OFFICIAL_OWNED",
-                      excerpt=statement, observed_at=at, created_at=at, updated_at=at)
-    finding = Finding(
-        id=uid("finding"), tenant_id=tenant, audit_id=audit.id, observation_id=ob.id,
-        category=category, title=title, status="APPROVED",
-        standard_id=(std.id if std else None), evidence_ids=[ev.id],
-        consultant_statement=statement,
-        model_interpretation="Prior visit; retained as location history (DEMO_FIXTURE).",
-        severity=severity, confidence=0.8,
-        not_supported=["Root cause", "Whether the condition recurred between visits"],
-        recommended_action={"description": action_desc, "owner_role": "Facilities Manager"},
-        review_history=[{"at": at.isoformat(), "actor": "Ops Director",
-                         "action": "approve", "reason": "confirmed on site"}],
-        created_at=at, updated_at=at)
-    act = Action(id=uid("act"), tenant_id=tenant, finding_id=finding.id,
-                 description=action_desc, owner_role="Facilities Manager",
-                 due_date=(at + timedelta(days=3)).date().isoformat(),
-                 verification_method="After photo plus manager confirmation",
-                 status="VERIFIED" if verified else "OPEN",
-                 events=[{"at": at.isoformat(), "event": "CREATED", "by": "Ops Director"}]
-                        + ([{"at": (at + timedelta(days=2)).isoformat(), "event": "VERIFIED",
-                             "by": "Location Manager", "provenance": "SIMULATED_OUTCOME"}]
-                           if verified else []),
-                 created_at=at, updated_at=at)
-    db.add(audit)
-    db.flush()
-    db.add_all([ob, ev])
-    db.flush()
-    db.add(finding)
-    db.flush()
-    db.add(act)
-
-
 def _seed_history(db) -> None:
-    """Prior audits so the recurrence detector has something to remember.
-
-    Without history every finding looks like a first occurrence, which is the
-    least interesting version of the product and the one every checklist app
-    already ships.
-    """
-    if db.query(AuditSession).filter_by(consultant_name="Prior visit (DEMO_FIXTURE)").count():
-        return
-
-    # Wolf Creek: the restroom issue was raised, corrected, signed off — and the
-    # demo's headline observation describes it happening again.
-    _closed_history(
-        db, tenant="broadpeak-demo", location="wolf-creek-atlanta", days_ago=118,
-        category="cleanliness", std_code="CLN-01", severity="HIGH",
-        title="Men's clubhouse restroom not meeting CLN-01 during operating hours",
-        statement=("Men's clubhouse restroom: waste bin at capacity, floor wet around sinks, "
-                   "no inspection sheet signed after 11am."),
-        action_desc="Reinstate the posted two-hourly restroom inspection round and sign the sheet each pass.",
-        verified=True)
-    # A second one left open, so the reviewer sees both branches of the history.
-    _closed_history(
-        db, tenant="broadpeak-demo", location="wolf-creek-atlanta", days_ago=54,
-        category="signage", std_code="SIG-01", severity="LOW",
-        title="Arrival-road wayfinding sign faded below legibility",
-        statement="Sign at the Union Rd turn is sun-faded; text not legible from the road at speed.",
-        action_desc="Replace the arrival-road wayfinding panel.",
-        verified=False)
-    # EV depot: same mechanism, different tenant and different standards.
-    _closed_history(
-        db, tenant="broadpeak-mobility-demo", location="alquoz-depot-dubai", days_ago=96,
-        category="safety", std_code="EVS-01", severity="HIGH",
-        title="Charging cable across walkway in bay 4 (EVS-01)",
-        statement="Bay 4 cable left uncoiled across the pedestrian route at shift change.",
-        action_desc="Install bay-side cable racks and add cable stowage to the shift-change checklist.",
-        verified=True)
-    db.commit()
+    """Seed the curated showcase plus its hidden recurrence support row."""
+    from .showcase import seed_showcase
+    seed_showcase(db)
 
 
 if __name__ == "__main__":
