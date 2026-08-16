@@ -284,7 +284,12 @@ class DemoAccessEvent(Base, TimestampMixin):
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
-engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {})
+engine = create_engine(
+    config.DATABASE_URL,
+    connect_args={"check_same_thread": False}
+    if config.DATABASE_URL.startswith("sqlite") else {},
+    pool_pre_ping=True,
+)
 
 
 if config.DATABASE_URL.startswith("sqlite"):

@@ -18,7 +18,7 @@ from threading import Lock
 import httpx
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -26,6 +26,8 @@ from sqlalchemy import func, text as sql_text
 
 from . import config
 from .budget import BUDGET_EVENT, ModelBudgetExceeded, audit_budget
+from .blob_store import (BlobStoreUnavailable, delete_blob,
+                         ensure_remote_bucket, get_blob, put_blob)
 from .build_meta import source_fingerprint
 from .agent.orchestrator import (analyze_audit, answer_clarification,
                                  challenge_existing_finding, review_finding)
@@ -181,9 +183,18 @@ def _model_budget_handler(_request, exc: ModelBudgetExceeded):
     return JSONResponse(status_code=429, content={"detail": str(exc)})
 
 
+@app.exception_handler(BlobStoreUnavailable)
+def _blob_store_handler(_request, _exc: BlobStoreUnavailable):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "persistent evidence storage is temporarily unavailable"},
+    )
+
+
 @app.on_event("startup")
 def _startup() -> None:
     config.validate_runtime()
+    ensure_remote_bucket()
     init_db()
     seed()
 
@@ -198,13 +209,13 @@ def health() -> dict:
 
 @app.get("/api/active")
 def active_probe() -> dict:
-    """Cheap public target for an external uptime monitor.
-
-    This intentionally avoids the database and model provider. It proves that
-    the web process can answer HTTP without spending analysis budget or
-    exposing configuration metadata.
-    """
-    return {"ok": True, "service": "fieldintel",
+    """Cheap public target that keeps both web and persistent DB responsive."""
+    db = SessionLocal()
+    try:
+        db.execute(sql_text("SELECT 1"))
+    finally:
+        db.close()
+    return {"ok": True, "service": "fieldintel", "database": "reachable",
             "purpose": "external_uptime_probe"}
 
 
@@ -852,10 +863,7 @@ def discard_audit(audit_id: str, body: AuditDeleteBody) -> dict:
     }
     removed_files = 0
     for digest in digests - remaining_digests:
-        for path in config.UPLOADS_DIR.glob(f"{digest}.*"):
-            if path.is_file():
-                path.unlink()
-                removed_files += 1
+        removed_files += int(delete_blob(digest))
     db.close()
     return {
         "discarded": audit_id,
@@ -1186,8 +1194,6 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
         raise HTTPException(415, "file contents are not a valid supported image")
 
     digest = hashlib.sha256(raw).hexdigest()
-    extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[mime]
-
     desc = None
     vision_error = ""
     try:
@@ -1226,9 +1232,7 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
                 "image_quality_issues": desc.image_quality_issues,
                 "note": "The image was analysed transiently but was not stored."}
 
-    stored = config.UPLOADS_DIR / f"{digest}{extension}"
-    if not stored.exists():
-        stored.write_bytes(raw)
+    put_blob(digest, raw, mime)
 
     text = (desc.description if desc is not None else
             f"Photo captured to support: {target_observation.text[:500]}" if target_observation else
@@ -1361,19 +1365,43 @@ def get_photo(digest: str):
     reviewer sees is provably the one the description was generated from."""
     if not re.fullmatch(r"[a-f0-9]{64}", digest):
         raise HTTPException(400, "bad digest")
-    for p in config.UPLOADS_DIR.glob(f"{digest}.*"):
-        return FileResponse(p)
-    raise HTTPException(404)
+    blob = get_blob(digest)
+    if blob is None:
+        raise HTTPException(404)
+    return Response(content=blob.content, media_type=blob.mime_type,
+                    headers={"ETag": f'"{digest}"'})
 
 
 @app.get("/api/media/{digest}")
-def get_media(digest: str):
+def get_media(digest: str, request: Request):
     """POC media review route. Production requires authenticated tenant scope."""
     if not re.fullmatch(r"[a-f0-9]{64}", digest):
         raise HTTPException(400, "bad digest")
-    for path in config.UPLOADS_DIR.glob(f"{digest}.*"):
-        return FileResponse(path)
-    raise HTTPException(404)
+    blob = get_blob(digest)
+    if blob is None:
+        raise HTTPException(404)
+    headers = {"ETag": f'"{digest}"', "Accept-Ranges": "bytes"}
+    range_header = request.headers.get("range", "")
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header)
+    if not match:
+        return Response(content=blob.content, media_type=blob.mime_type,
+                        headers=headers)
+    size = len(blob.content)
+    raw_start, raw_end = match.groups()
+    if not raw_start and not raw_end:
+        raise HTTPException(416, headers={"Content-Range": f"bytes */{size}"})
+    if raw_start:
+        start = int(raw_start)
+        end = min(int(raw_end), size - 1) if raw_end else size - 1
+    else:
+        suffix = int(raw_end)
+        start, end = max(size - suffix, 0), size - 1
+    if start >= size or start > end:
+        raise HTTPException(416, headers={"Content-Range": f"bytes */{size}"})
+    headers.update({"Content-Range": f"bytes {start}-{end}/{size}",
+                    "Content-Length": str(end - start + 1)})
+    return Response(content=blob.content[start:end + 1], status_code=206,
+                    media_type=blob.mime_type, headers=headers)
 
 
 @app.post("/api/audits/{audit_id}/media")
@@ -1453,15 +1481,7 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
                 "note": "The clip was analysed transiently but was not stored."}
 
     digest = hashlib.sha256(raw).hexdigest()
-    extension = {
-        "audio/wav": ".wav", "audio/mpeg": ".mp3", "audio/mp3": ".mp3",
-        "audio/aiff": ".aiff", "audio/aac": ".aac", "audio/ogg": ".ogg",
-        "audio/flac": ".flac", "video/mp4": ".mp4", "video/webm": ".webm",
-        "video/mpeg": ".mpeg", "video/quicktime": ".mov",
-    }[mime]
-    stored = config.UPLOADS_DIR / f"{digest}{extension}"
-    if not stored.exists():
-        stored.write_bytes(raw)
+    put_blob(digest, raw, mime)
 
     if media_kind == "AUDIO":
         text = f"Consultant voice note (model transcript): {desc.transcript or desc.description}"
@@ -2053,10 +2073,7 @@ async def add_action_evidence(action_id: str, file: UploadFile = File(...),
         if digest in {row.get("digest") for row in (linked_ticket.after_evidence or [])}:
             db.close()
             raise HTTPException(409, "this image is already attached as after evidence")
-    extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[mime]
-    stored = config.UPLOADS_DIR / f"{digest}{extension}"
-    if not stored.exists():
-        stored.write_bytes(raw)
+    put_blob(digest, raw, mime)
     event = {"at": datetime.now(timezone.utc).isoformat(), "event": "AFTER_EVIDENCE_UPLOADED",
              "by": actor, "note": note[:1000], "image_sha256": digest,
              "provenance": "STAFF_UPLOADED_PHOTO"}
@@ -2324,10 +2341,7 @@ async def add_ticket_evidence(ticket_id: str, stage: str = Form(...),
     if digest in {row.get("digest") for row in (existing_stage or [])}:
         db.close()
         raise HTTPException(409, f"this image is already attached as {stage.lower()} evidence")
-    extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[mime]
-    stored = config.UPLOADS_DIR / f"{digest}{extension}"
-    if not stored.exists():
-        stored.write_bytes(raw)
+    put_blob(digest, raw, mime)
     at = datetime.now(timezone.utc).isoformat()
     evidence = {"digest": digest, "mime": mime, "note": note.strip(),
                 "actor": actor.strip(), "at": at,

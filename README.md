@@ -198,15 +198,18 @@ docker build -t fieldintel . && docker run -p 8000:8000 fieldintel
 `render.yaml` is a Render blueprint. Set `DEMO_PASSWORD` and `SESSION_SECRET`
 when Render prompts; production startup deliberately fails if either is absent.
 Gemini and Maps credentials remain optional: without them, text analysis uses the
-labelled fixture engine. The included free-tier blueprint uses one worker and an
-ephemeral SQLite/uploads directory, so assessment data survives normal use but
-resets on redeploy/restart. Persistent production use requires a Render disk or,
-preferably, Postgres plus object storage and migrations.
+labelled fixture engine. The blueprint accepts a private Supabase PostgreSQL
+`DATABASE_URL` plus `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. When those
+are configured, audit records and digest-addressed evidence survive Render
+spin-downs and redeploys. If they are omitted, development falls back to the
+ephemeral SQLite/uploads directory. The service-role key is server-only; the
+browser retrieves private evidence through authenticated application routes.
 
 ### Free-service wake-up monitor
 
-`GET /api/active` is a public, read-only uptime probe. It performs no database
-query and no model call, so it cannot consume an audit's AI budget. To reduce
+`GET /api/active` is a public, read-only uptime probe. It performs one `SELECT 1`
+database heartbeat and no model call, so it keeps both Render and the free
+database responsive without consuming an audit's AI budget. To reduce
 free-service idle spin-down, create a free UptimeRobot HTTP(S) monitor for:
 
 ```text

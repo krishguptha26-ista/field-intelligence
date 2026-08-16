@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timedelta, timezone
 
-from . import config
+from .blob_store import delete_blob, put_blob
 from .field_guide import ZONE_CHECK_CODES, issue_photo_policy
 from .models import (Action, AuditLog, AuditSession, ClarificationQuestion,
                      EvidenceItem, Finding, ModelCall, Observation,
@@ -35,9 +35,7 @@ def _demo_svg(name: str, title: str, subtitle: str, accent: str) -> str:
 </svg>'''
     raw = body.encode()
     digest = hashlib.sha256(raw).hexdigest()
-    path = config.UPLOADS_DIR / f"{digest}.svg"
-    if not path.exists():
-        path.write_bytes(raw)
+    put_blob(digest, raw, "image/svg+xml")
     return digest
 
 
@@ -461,9 +459,7 @@ def replace_audits_with_showcase() -> dict:
         db.delete(row)
     db.commit()
     for digest in digests:
-        for path in config.UPLOADS_DIR.glob(f"{digest}.*"):
-            if path.is_file():
-                path.unlink()
+        delete_blob(digest)
     seed_showcase(db)
     result = {"removed_audits": len(audits), "showcase_audit_id": SHOWCASE_AUDIT_ID}
     db.close()

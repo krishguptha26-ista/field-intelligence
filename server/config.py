@@ -88,6 +88,19 @@ CORS_ORIGINS = (["*"] if APP_ENV != "production" else
                 [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",")
                  if origin.strip()])
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{ROOT / 'var' / 'fieldintel.db'}")
+# SQLAlchemy otherwise assumes the legacy psycopg2 driver for a plain
+# postgresql:// URL. The deployment uses maintained psycopg 3.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SUPABASE_STORAGE_BUCKET = os.getenv(
+    "SUPABASE_STORAGE_BUCKET", "field-intelligence-evidence"
+).strip()
+REMOTE_STORAGE_CONFIGURED = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 MAX_LLM_CALLS_PER_AUDIT = int(os.getenv("MAX_LLM_CALLS_PER_AUDIT", "25"))
 MAX_LLM_CALLS_PER_HOUR = int(os.getenv("MAX_LLM_CALLS_PER_HOUR", "500"))
 LLM_BUDGET_EXTENSION_CALLS = int(os.getenv("LLM_BUDGET_EXTENSION_CALLS", "15"))
@@ -121,6 +134,13 @@ def validate_runtime() -> None:
         if (LOGIN_NOTIFICATION_WEBHOOK_URL
                 and not LOGIN_NOTIFICATION_WEBHOOK_URL.startswith("https://")):
             raise RuntimeError("LOGIN_NOTIFICATION_WEBHOOK_URL must use https in production")
+        supplied_storage = bool(SUPABASE_URL) + bool(SUPABASE_SERVICE_ROLE_KEY)
+        if supplied_storage == 1:
+            raise RuntimeError(
+                "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be supplied together"
+            )
+        if SUPABASE_URL and not SUPABASE_URL.startswith("https://"):
+            raise RuntimeError("SUPABASE_URL must use https in production")
 
 
 def key_status() -> dict:
@@ -129,6 +149,8 @@ def key_status() -> dict:
         "gemini_key_present": bool(GEMINI_API_KEY),
         "gemini_vertex_configured": bool(GEMINI_VERTEX_PROJECT and GEMINI_VERTEX_SA_PATH),
         "gemini_configured": GEMINI_CONFIGURED,
+        "database_backend": "postgresql" if DATABASE_URL.startswith("postgresql") else "sqlite",
+        "persistent_media_configured": REMOTE_STORAGE_CONFIGURED,
         "maps_key_present": bool(GOOGLE_MAPS_API_KEY),
         "demo_mode": APP_DEMO_MODE,
         "llm_provider": LLM_PROVIDER,

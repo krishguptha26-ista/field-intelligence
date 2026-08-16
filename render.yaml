@@ -42,6 +42,18 @@ services:
       - key: MAX_LLM_CALLS_PER_HOUR
         value: "500"
 
+      # --- Persistent state: private Supabase Postgres + Storage ---
+      # DATABASE_URL should use the Supabase session-pooler connection string.
+      # The service-role key remains server-side and is never sent to the web UI.
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: field-intelligence-evidence
+
       # --- Gemini: either an API key, or a Vertex service account ---
       - key: GEMINI_API_KEY
         sync: false

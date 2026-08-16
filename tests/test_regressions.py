@@ -153,6 +153,7 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertEqual(active.json(), {
                 "ok": True,
                 "service": "fieldintel",
+                "database": "reachable",
                 "purpose": "external_uptime_probe",
             })
             wrong = anonymous.post("/api/auth/login", json={
@@ -166,6 +167,18 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertIn("HttpOnly", signed_in.headers["set-cookie"])
             self.assertIn("SameSite=strict", signed_in.headers["set-cookie"])
             self.assertEqual(anonymous.get("/api/tenants").status_code, 200)
+
+    def test_private_media_route_preserves_browser_range_requests(self) -> None:
+        from server.blob_store import StoredBlob
+        digest = "a" * 64
+        with patch("server.app.get_blob",
+                   return_value=StoredBlob(b"0123456789", "video/mp4")):
+            partial = self.client.get(
+                f"/api/media/{digest}", headers={"Range": "bytes=2-5"})
+        self.assertEqual(partial.status_code, 206, partial.text)
+        self.assertEqual(partial.content, b"2345")
+        self.assertEqual(partial.headers["content-range"], "bytes 2-5/10")
+        self.assertEqual(partial.headers["accept-ranges"], "bytes")
 
     def test_successful_login_is_recorded_and_notified_without_sensitive_data(self) -> None:
         delivered = MagicMock()
