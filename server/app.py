@@ -5,6 +5,7 @@ import hashlib
 import base64
 import hmac
 import json
+import os
 import re
 import time
 from collections import defaultdict, deque
@@ -14,7 +15,8 @@ from pathlib import Path
 from typing import Literal
 from threading import Lock
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+import httpx
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,7 +36,7 @@ from .connectors.review_snapshot import load_review_snapshot
 from .gateway import get_provider, provider_status
 from .locks import audit_lock
 from .field_guide import ZONE_CHECK_CODES, issue_photo_policy
-from .models import (Action, AuditLog, AuditSession, ClarificationQuestion,
+from .models import (Action, AuditLog, AuditSession, ClarificationQuestion, DemoAccessEvent,
                      EvidenceItem, Finding, Location, ModelCall, Observation,
                      OperationalTicket, TaxonomyProposal,
                      SessionLocal, Standard, Tenant, Zone, init_db, uid)
@@ -197,6 +199,73 @@ class LoginBody(BaseModel):
     password: str = Field(min_length=1, max_length=500)
 
 
+def _demo_access_payload(request: Request) -> tuple[DemoAccessEvent, dict]:
+    """Build an inspectable login event without retaining a raw IP address."""
+    forwarded = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    source_address = forwarded or (request.client.host if request.client else "unknown")
+    user_agent = request.headers.get("user-agent", "unknown")[:240]
+    visitor_id = hmac.new(
+        config.SESSION_SECRET.encode(),
+        f"{source_address}|{user_agent}".encode(),
+        hashlib.sha256,
+    ).hexdigest()[:12]
+    event = DemoAccessEvent(
+        id=uid("access"),
+        username=config.DEMO_USERNAME,
+        client_fingerprint=visitor_id,
+        user_agent=user_agent,
+        notification_status=("PENDING" if config.LOGIN_NOTIFICATION_WEBHOOK_URL
+                             else "NOT_CONFIGURED"),
+        detail={"environment": config.APP_ENV, "raw_ip_stored": False},
+    )
+    occurred_at = datetime.now(timezone.utc).isoformat()
+    text = (f"Field Intelligence demo login: {config.DEMO_USERNAME} at "
+            f"{occurred_at} (visitor {visitor_id}, {config.APP_ENV}).")
+    payload = {
+        "event": "FIELDINTEL_DEMO_LOGIN",
+        "message": text,
+        "text": text,
+        "occurred_at": occurred_at,
+        "username": config.DEMO_USERNAME,
+        "visitor_id": visitor_id,
+        "user_agent": user_agent,
+        "environment": config.APP_ENV,
+        "app_url": os.getenv("RENDER_EXTERNAL_URL", ""),
+        "privacy": "Raw IP and credentials are not included.",
+    }
+    return event, payload
+
+
+def _deliver_login_notification(event_id: str | None, payload: dict) -> None:
+    """Best-effort delivery after the login response; never blocks access."""
+    status = "FAILED"
+    error_kind = ""
+    try:
+        response = httpx.post(
+            config.LOGIN_NOTIFICATION_WEBHOOK_URL,
+            json=payload,
+            timeout=5.0,
+        )
+        response.raise_for_status()
+        status = "SENT"
+    except Exception as exc:  # delivery state is visible; credentials are never logged
+        error_kind = type(exc).__name__
+    if not event_id:
+        return
+    db = SessionLocal()
+    try:
+        event = db.get(DemoAccessEvent, event_id)
+        if event:
+            event.notification_status = status
+            if status == "SENT":
+                event.notified_at = datetime.now(timezone.utc)
+            event.detail = {**(event.detail or {}),
+                            **({"delivery_error": error_kind} if error_kind else {})}
+            db.commit()
+    finally:
+        db.close()
+
+
 @app.get("/api/auth/session")
 def auth_session(request: Request) -> dict:
     user = _session_user(request.cookies.get(SESSION_COOKIE))
@@ -207,7 +276,7 @@ def auth_session(request: Request) -> dict:
 
 
 @app.post("/api/auth/login")
-def auth_login(body: LoginBody):
+def auth_login(body: LoginBody, request: Request, background_tasks: BackgroundTasks):
     client_key = "unknown"
     # Rate limiting is deliberately local to the single Render worker used by
     # this assessment. A scaled deployment must move it to a shared store.
@@ -229,6 +298,21 @@ def auth_login(body: LoginBody):
         raise HTTPException(401, "invalid username or password")
     with _LOGIN_ATTEMPTS_LOCK:
         _LOGIN_ATTEMPTS.pop(client_key, None)
+    access_event, notification = _demo_access_payload(request)
+    persisted_event_id: str | None = None
+    db = SessionLocal()
+    try:
+        db.add(access_event)
+        db.commit()
+        persisted_event_id = access_event.id
+    except Exception:
+        # Access telemetry must never become an authentication dependency.
+        db.rollback()
+    finally:
+        db.close()
+    if config.LOGIN_NOTIFICATION_WEBHOOK_URL:
+        background_tasks.add_task(
+            _deliver_login_notification, persisted_event_id, notification)
     response = JSONResponse({"authenticated": True,
                              "username": config.DEMO_USERNAME})
     response.set_cookie(
@@ -2546,6 +2630,9 @@ def console() -> dict:
         func.sum(ModelCall.output_tokens), func.sum(ModelCall.est_cost_usd),
         func.avg(ModelCall.latency_ms)).one()
     audits = db.query(AuditSession).count()
+    access_events = (db.query(DemoAccessEvent)
+                     .order_by(DemoAccessEvent.created_at.desc()).limit(25).all())
+    access_total = db.query(DemoAccessEvent).count()
     out = {
         "totals": {"calls": agg[0] or 0, "input_tokens": int(agg[1] or 0),
                    "output_tokens": int(agg[2] or 0),
@@ -2558,6 +2645,17 @@ def console() -> dict:
                     "latency_ms": c.latency_ms, "cost": c.est_cost_usd,
                     "ok": c.ok, "retries": c.schema_retries,
                     "at": c.created_at.isoformat()} for c in calls],
+        "access_activity": {
+            "successful_logins": access_total,
+            "webhook_configured": bool(config.LOGIN_NOTIFICATION_WEBHOOK_URL),
+            "recent": [{
+                "at": event.created_at.isoformat(),
+                "username": event.username,
+                "visitor_id": event.client_fingerprint,
+                "user_agent": event.user_agent,
+                "notification_status": event.notification_status,
+            } for event in access_events],
+        },
     }
     db.close()
     return out

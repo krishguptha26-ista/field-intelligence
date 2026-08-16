@@ -83,6 +83,7 @@ SESSION_SECRET = os.getenv(
     "local-fieldintel-session-secret-change-me" if APP_ENV != "production" else "",
 )
 SESSION_HOURS = int(os.getenv("SESSION_HOURS", "12"))
+LOGIN_NOTIFICATION_WEBHOOK_URL = os.getenv("LOGIN_NOTIFICATION_WEBHOOK_URL", "").strip()
 CORS_ORIGINS = (["*"] if APP_ENV != "production" else
                 [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",")
                  if origin.strip()])
@@ -117,6 +118,9 @@ def validate_runtime() -> None:
             )
         if len(SESSION_SECRET) < 32:
             raise RuntimeError("SESSION_SECRET must contain at least 32 characters")
+        if (LOGIN_NOTIFICATION_WEBHOOK_URL
+                and not LOGIN_NOTIFICATION_WEBHOOK_URL.startswith("https://")):
+            raise RuntimeError("LOGIN_NOTIFICATION_WEBHOOK_URL must use https in production")
 
 
 def key_status() -> dict:

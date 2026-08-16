@@ -6,6 +6,7 @@ export default function ConsoleScreen() {
   useEffect(() => { api.console().then(setData).catch(() => {}); }, []);
   if (!data) return <div><h1>Cost & observability</h1><div className="card">Loading…</div></div>;
   const t = data.totals;
+  const access = data.access_activity ?? { successful_logins: 0, webhook_configured: false, recent: [] };
   return (
     <div>
       <h1>Cost & observability</h1>
@@ -33,6 +34,28 @@ export default function ConsoleScreen() {
             ))}
           </tbody>
         </table>
+      </div>
+      <h2>Demo access activity</h2>
+      <div className="sub">Successful sign-ins only. Visitor IDs are one-way pseudonyms; raw IP addresses and passwords are not retained.</div>
+      <div className="row">
+        <div className="card stat"><div className="n">{access.successful_logins}</div><div className="l">successful sign-ins</div></div>
+        <div className="card stat"><div className="n">{access.webhook_configured ? "ON" : "OFF"}</div><div className="l">private login notification</div></div>
+      </div>
+      <div className="card">
+        {access.recent.length === 0 ? <p className="muted">No successful sign-ins recorded yet.</p> : <table>
+          <thead><tr><th>When</th><th>User</th><th>Anonymous visitor</th><th>Browser</th><th>Notification</th></tr></thead>
+          <tbody>{access.recent.map((event: any) => (
+            <tr key={`${event.at}-${event.visitor_id}`}>
+              <td>{new Date(event.at).toLocaleString()}</td>
+              <td>{event.username}</td>
+              <td className="mono">{event.visitor_id}</td>
+              <td title={event.user_agent}>{event.user_agent.length > 64 ? `${event.user_agent.slice(0, 61)}…` : event.user_agent}</td>
+              <td><span className={`badge ${event.notification_status === "SENT" ? "ok" : event.notification_status === "FAILED" ? "risk" : "amber"}`}>
+                {event.notification_status.replaceAll("_", " ")}
+              </span></td>
+            </tr>
+          ))}</tbody>
+        </table>}
       </div>
     </div>
   );

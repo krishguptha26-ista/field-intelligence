@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 TEST_DB = Path(__file__).resolve().parent.parent / "var" / "test_regressions.db"
@@ -30,8 +30,9 @@ from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
 
 from server.app import app  # noqa: E402
+from server import config  # noqa: E402
 from server.agent import challenge  # noqa: E402
-from server.models import (AuditSession, ClarificationQuestion, Finding, ModelCall, Observation,
+from server.models import (AuditSession, ClarificationQuestion, DemoAccessEvent, Finding, ModelCall, Observation,
                            OperationalTicket, SessionLocal, Standard, engine,
                            uid)  # noqa: E402
 from server.agent.orchestrator import _scope_representative_standard  # noqa: E402
@@ -100,6 +101,69 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertIn("HttpOnly", signed_in.headers["set-cookie"])
             self.assertIn("SameSite=strict", signed_in.headers["set-cookie"])
             self.assertEqual(anonymous.get("/api/tenants").status_code, 200)
+
+    def test_successful_login_is_recorded_and_notified_without_sensitive_data(self) -> None:
+        delivered = MagicMock()
+        delivered.raise_for_status.return_value = None
+        db = SessionLocal()
+        before = db.query(DemoAccessEvent).count()
+        db.close()
+        with (patch.object(config, "LOGIN_NOTIFICATION_WEBHOOK_URL",
+                           "https://hook.example.invalid/login"),
+              patch("server.app.httpx.post", return_value=delivered) as webhook,
+              TestClient(app) as client):
+            wrong = client.post("/api/auth/login", json={
+                "username": "demo-user", "password": "wrong",
+            })
+            self.assertEqual(wrong.status_code, 401, wrong.text)
+            signed_in = client.post("/api/auth/login", json={
+                "username": "demo-user", "password": "Broadpeak-demo-user",
+            }, headers={
+                "x-forwarded-for": "203.0.113.40",
+                "user-agent": "Login notification regression",
+            })
+            self.assertEqual(signed_in.status_code, 200, signed_in.text)
+            console = client.get("/api/console")
+            self.assertEqual(console.status_code, 200, console.text)
+            self.assertTrue(console.json()["access_activity"]["webhook_configured"])
+
+        webhook.assert_called_once()
+        payload = webhook.call_args.kwargs["json"]
+        serialised = json.dumps(payload)
+        self.assertNotIn("Broadpeak-demo-user", serialised)
+        self.assertNotIn("203.0.113.40", serialised)
+        self.assertEqual(payload["event"], "FIELDINTEL_DEMO_LOGIN")
+
+        db = SessionLocal()
+        try:
+            self.assertEqual(db.query(DemoAccessEvent).count(), before + 1)
+            event = (db.query(DemoAccessEvent)
+                     .order_by(DemoAccessEvent.created_at.desc()).first())
+            self.assertEqual(event.notification_status, "SENT")
+            self.assertEqual(event.user_agent, "Login notification regression")
+            self.assertEqual(len(event.client_fingerprint), 12)
+        finally:
+            db.close()
+
+    def test_login_succeeds_when_notification_delivery_fails(self) -> None:
+        with (patch.object(config, "LOGIN_NOTIFICATION_WEBHOOK_URL",
+                           "https://hook.example.invalid/login"),
+              patch("server.app.httpx.post", side_effect=RuntimeError("offline")),
+              TestClient(app) as client):
+            signed_in = client.post("/api/auth/login", json={
+                "username": "demo-user", "password": "Broadpeak-demo-user",
+            })
+            self.assertEqual(signed_in.status_code, 200, signed_in.text)
+            self.assertEqual(client.get("/api/tenants").status_code, 200)
+
+        db = SessionLocal()
+        try:
+            event = (db.query(DemoAccessEvent)
+                     .order_by(DemoAccessEvent.created_at.desc()).first())
+            self.assertEqual(event.notification_status, "FAILED")
+            self.assertEqual(event.detail.get("delivery_error"), "RuntimeError")
+        finally:
+            db.close()
 
     def test_photo_for_one_check_cannot_support_another_check_in_same_zone(self) -> None:
         audit_id = self.new_audit()

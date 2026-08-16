@@ -272,6 +272,18 @@ class AuditLog(Base, TimestampMixin):
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class DemoAccessEvent(Base, TimestampMixin):
+    """Privacy-minimised successful access to the shared assessment demo."""
+    __tablename__ = "demo_access_events"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    username: Mapped[str] = mapped_column(String, index=True)
+    client_fingerprint: Mapped[str] = mapped_column(String, index=True)
+    user_agent: Mapped[str] = mapped_column(String, default="")
+    notification_status: Mapped[str] = mapped_column(String, default="NOT_CONFIGURED")
+    notified_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    detail: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 engine = create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {})
 
 

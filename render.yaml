@@ -4,9 +4,8 @@
 # stores it in its own secret manager. No key, and no service-account JSON, ever
 # goes in this file or anywhere else in the repo.
 #
-# The app is designed to run with NONE of these set: it falls back to the
-# deterministic fixture engine and labels every screen accordingly. So a
-# secrets-free deploy is a legitimate deploy, not a broken one.
+# Gemini and Google credentials are optional; the shared demo password and
+# session secret are required for every production deployment.
 
 services:
   - type: web
@@ -33,6 +32,10 @@ services:
         sync: false
       - key: SESSION_HOURS
         value: "12"
+      # Optional Make.com custom webhook for private successful-login alerts.
+      # Leave unset to retain login activity only in Observability.
+      - key: LOGIN_NOTIFICATION_WEBHOOK_URL
+        sync: false
       - key: MAX_LLM_CALLS_PER_HOUR
         value: "500"
 

@@ -192,6 +192,19 @@ ephemeral SQLite/uploads directory, so assessment data survives normal use but
 resets on redeploy/restart. Persistent production use requires a Render disk or,
 preferably, Postgres plus object storage and migrations.
 
+### Optional successful-login notification
+
+Every successful shared-demo login is recorded in **Technical Evaluator →
+Observability** with UTC time, browser summary, an anonymous visitor ID and
+delivery status. Raw IP addresses and credentials are neither stored nor sent.
+
+For an immediate email or message, create a Make.com **Custom webhook**, route
+that scenario to the destination you prefer, and set its HTTPS URL as the
+Render secret `LOGIN_NOTIFICATION_WEBHOOK_URL`. Delivery runs after the login
+response. A timeout or webhook error never prevents access; it is shown as
+`FAILED` in Observability. Leaving the variable empty keeps the internal access
+ledger and disables outbound notifications.
+
 ## Evals
 
 ```bash
