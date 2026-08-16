@@ -12,6 +12,9 @@ services:
     name: fieldintel
     runtime: docker
     plan: free
+    # Closest available Render region to the Atlanta reference location.
+    # Region cannot be changed after service creation.
+    region: virginia
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     envVars:
