@@ -58,6 +58,7 @@
 .login-card button:disabled { opacity: .55; cursor: wait; }
 .login-card small { display: block; margin-top: 18px; color: var(--stone-500); }
 .login-error { padding: 10px 12px; border-radius: 9px; background: rgba(202,75,75,.16); color: #ffc1c1; font-size: 12px; }
+.login-notice { margin: -10px 0 16px; padding: 10px 12px; border-radius: 9px; background: rgba(224,193,113,.12); color: var(--gold-soft); font-size: 12px; }
 .login-loading { color: var(--stone-200); font-weight: 750; }
 
 @media (max-width: 800px) {

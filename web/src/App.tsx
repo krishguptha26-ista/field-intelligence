@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api } from "./api";
+import { api, AUTH_REQUIRED_EVENT } from "./api";
 import Portfolio from "./screens/Portfolio";
 import Audit from "./screens/Audit";
 import Workbench from "./screens/Workbench";
@@ -34,7 +34,10 @@ const SCREENS = {
 
 type ScreenId = keyof typeof SCREENS;
 
-function LoginScreen({ onSignedIn }: { onSignedIn: (username: string) => void }) {
+function LoginScreen({ onSignedIn, notice }: {
+  onSignedIn: (username: string) => void;
+  notice?: string;
+}) {
   const [username, setUsername] = useState("demo-user");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,6 +58,7 @@ function LoginScreen({ onSignedIn }: { onSignedIn: (username: string) => void })
       <span className="login-kicker">CONTROLLED ASSESSMENT DEMO</span>
       <h1 id="login-title">Sign in to the workspace</h1>
       <p>Use the shared demo credential provided with this assessment. Do not upload personal or confidential material.</p>
+      {notice && <div className="login-notice" role="status">{notice}</div>}
       <form onSubmit={submit}>
         <label>Username<input autoComplete="username" value={username}
           onChange={event => setUsername(event.target.value)} /></label>
@@ -90,6 +94,7 @@ const DEFAULT_SCREEN: Record<string, ScreenId> = {
 
 export default function App() {
   const [authUser, setAuthUser] = useState<string | null | undefined>(undefined);
+  const [authNotice, setAuthNotice] = useState("");
   const initialLocation = localStorage.getItem("fieldintel.location") || "wolf-creek-atlanta";
   const [screen, setScreen] = useState<string>(() => localStorage.getItem("fieldintel.screen") || "audit");
   const [tenants, setTenants] = useState<any[]>([]);
@@ -103,8 +108,14 @@ export default function App() {
     !sessionStorage.getItem("fieldintel.tour.dismissed"));
 
   useEffect(() => {
+    const requireAuthentication = () => {
+      setAuthNotice("Your session expired. Sign in again to continue.");
+      setAuthUser(null);
+    };
+    window.addEventListener(AUTH_REQUIRED_EVENT, requireAuthentication);
     api.session().then(session => setAuthUser(session.username)).catch(() => setAuthUser(null));
     api.health().then(setHealth).catch(() => {});
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, requireAuthentication);
   }, []);
 
   useEffect(() => {
@@ -151,7 +162,10 @@ export default function App() {
   };
 
   if (authUser === undefined) return <main className="login-shell"><div className="login-loading">Opening secure demo…</div></main>;
-  if (authUser === null) return <LoginScreen onSignedIn={setAuthUser} />;
+  if (authUser === null) return <LoginScreen notice={authNotice} onSignedIn={username => {
+    setAuthNotice("");
+    setAuthUser(username);
+  }} />;
 
   const personaOptions = (
     <>
@@ -183,6 +197,7 @@ export default function App() {
         </div>
         <button className="signout" onClick={async () => {
           await api.logout().catch(() => {});
+          setAuthNotice("");
           setAuthUser(null);
         }}>Sign out</button>
         {role === "Technical Evaluator" && <div className="provider-status">
