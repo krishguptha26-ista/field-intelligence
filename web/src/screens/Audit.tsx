@@ -1086,7 +1086,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       })}
       <div className="fi-guide-actions">
         {bulkClearableChecks.length > 0 && <button onClick={markAreaClear}>
-          Mark {bulkClearableChecks.length} unanswered operating prompt{bulkClearableChecks.length === 1 ? "" : "s"} clear
+          {bulkClearableChecks.length === 1
+            ? `Mark ${bulkClearableChecks[0].standard_code} as Pass`
+            : `Mark ${bulkClearableChecks.length} low-risk checks as Pass`}
         </button>}
         <button className="fi-primary" disabled={guideSaving || currentSelectionInvalid || !currentZone?.checks?.some((check: any) => checks[check.id])} onClick={submitGuide}>
           {guideSaving ? "Saving…" : "Save selected checks"}
