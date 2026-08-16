@@ -1,117 +1,103 @@
-# Field Intelligence — Krishna Guptha Yanduri
+# Field Intelligence
 
-## Approach
+> From a field observation to a verified operational outcome.
 
-I treated this as a trust system, not a checklist demo. In a franchise network,
-the expensive error is a confident finding the evidence does not support: it
-wastes the consultant's time and damages the franchisor-franchisee relationship.
-The product therefore follows one rule: **the agent proposes; a human decides**.
+I started with one question: **what would make a franchisee trust an AI-assisted finding?** The answer was not a smarter form. It was a field companion that lets consultants work naturally, preserves what they actually observed, and carries every supported issue through human review, ownership, correction and independent verification.
 
-The primary in-the-moment user is the field consultant. The mobile-first Field
-Companion guides them area by area while they speak, type, take a photo, record a
-short video, or answer structured checks. Voice is transcribed but cannot enter
-analysis until the consultant confirms it; photo/video models can describe
-observable facts but their schemas cannot return a violation. Visually
-verifiable or high-risk issues require a photo targeted to that exact report;
-other issues get an AI recommendation and may continue with detailed text at
-lower confidence. The agent then
-investigates through tenant-scoped, read-only tools and makes a schema-validated
-decision. Ambiguous input such as “the restroom floor looked a little dirty”
-becomes a targeted question, never a finding. Specific input can become a
-candidate finding containing the consultant's exact statement, the model's
-separate interpretation, cited standard, severity, confidence, uncertainty,
-what the evidence does not establish, and a proposed owner/deadline.
+## The product in one minute
 
-Four gates protect the reviewer: deterministic ambiguity policy, proof that the
-cited standard was retrieved in that run, a check that customer sentiment is not
-presented as field evidence, and three independent challenge lenses (evidence
-sufficiency, franchisee advocate, standards fit). The panel is reviewer-triggered
-in the SQLite POC so a consultant is not blocked for ~40 seconds in the field;
-missing challenger responses fail closed. Only an independent human approval
-creates a corrective action. Closure requires a real after-photo before manager
-verification; review, edits, disputes and verification are append-only events.
+A consultant walks the property area by area and speaks, types, photographs or records what they notice. Field Intelligence structures that evidence in the background, asks a focused follow-up only when something is unclear, and checks the relevant source-labelled guide. It then prepares a review packet that keeps the consultant's statement separate from the AI interpretation.
 
-The implementation is a modular monolith: FastAPI, SQLAlchemy, React/Vite and one
-model gateway supporting Gemini or a labelled deterministic fixture engine.
-Single-worker SQLite keeps the POC portable; Postgres and object storage remain
-an explicit production migration. Prompts are versioned files and every model call records provider,
-model, tokens, latency, estimated cost, retries and success. A second EV/depot
-tenant runs through the same engine with separate standards, demonstrating the
-multi-tenant data boundary. A signed shared demo login protects the public POC
-without claiming production user-level authentication or RBAC.
+A reviewer can approve, edit, challenge, request evidence or reject the packet. An approved issue becomes an assigned case with a due date. The location operator adds before-and-after evidence, and a different person verifies the result. The product turns a moment in the field into a traceable operational outcome.
 
-## Results
+## Three moments that make it feel different
 
-Google Places worked but returned five Google-selected reviews, all positive in
-the observed response. I kept that source visible and correctly labelled, then
-used a pinned open-source collector once, outside the application request path,
-to obtain the complete Wolf Creek public snapshot. The import removes reviewer
-names, profiles and photos and hashes review IDs. The resulting 362 rows include
-42 one-star, 17 two-star, 28 three-star, 84 four-star and 191 five-star reviews.
-The product filters locally to ≤92 days, ≤3 stars and written feedback: 22 recent
-ratings become 7 actionable written reviews. Four recurring themes emerge:
-hydration availability, service/value response, cart/GPS reliability, and
-temporary-green disclosure. Reviews remain context and can never create a
-compliance finding.
+### 1. Walk naturally
 
-I extended that signal into an operational loop: recurring themes create
-idempotent, assigned triage tickets; staff must validate the issue on site,
-attach before and after images, submit a resolution, and obtain independent
-manager verification. Only then does the app draft a public owner reply. It does
-not pretend Google exposes private reviewer contact details. Rating impact stays
-`BASELINE_ONLY` until a later comparable snapshot exists, so the product cannot
-manufacture an ROI claim.
+The mobile-first companion supports voice, photo, video, typed notes and guided checks without forcing the consultant to stop and complete a long form. A zone-aware guide keeps the walkthrough focused, while a background capture queue makes progress visible.
 
-“Continuous learning” is also governed. Repeated customer language can propose a
-new measurable parameter with anonymized examples, but a named standards owner
-must approve or reject it. Approval queues design work; it does not silently
-retrain a model or rewrite a standard.
+### 2. Make every conclusion defensible
 
-For competitive intelligence, I collected and privacy-minimized 1,235 additional
-reviews from three nearby Atlanta public courses. Only aggregate counts, rates
-and hashed evidence references ship. Positive-theme rates show Wolf Creek's
-relative strengths in course condition, staff hospitality and layout/challenge,
-and supported opportunities in practice-facility visibility and value messaging.
-The UI labels the manually selected cohort directional, not representative market
-research.
+The AI preserves the original statement, shows confidence and uncertainty, cites the guide it used, and states what the evidence does not prove. It asks bounded clarifying questions instead of guessing. Media must match the selected area and reported condition; unrelated photo or video evidence is rejected.
 
-Validation is deliberately harder than a happy-path demo. Fifty-one API/domain
-regression tests pass, including authentication, forged provenance, cross-issue
-photo reuse, concurrent checklist saves, atomic model budgets, unconfirmed voice,
-high-privacy media, self-review and evidence-free closure.
-The deterministic behavioural suite ran each executable
-case three times: 15/15 executable cases passed, zero flaky, with one live-vision-only case explicitly
-skipped rather than counted green; the zero-unsupported-finding release gate
-cleared over a non-empty finding set. Separately, live Gemini passed the text
-injection case once and the vision injection case three consecutive times. The
-production bundle type-checks, `npm audit` reports zero vulnerabilities, the
-Docker image builds, and a credential-protected production container passed
-health, anonymous-denial, secure-session and static-bundle smoke checks. Desktop
-and 390px mobile browser validation found no console errors or horizontal overflow.
-Live Gemini rejected a deliberately unrelated checklist photo instead of linking
-it as proof, while the text-only path visibly capped confidence. Live Gemini
-also transcribed a real WAV, described a real MP4 with time-coded facts, refused
-to store that people-filled clip in a high-privacy restroom, and downgraded a
-candidate finding after two of three independent challenge lenses weakened it.
+### 3. Close the loop
 
-## What is honest, and what comes next
+Supported issues create a case receipt with an owner, due date and evidence state. Reviewer, operator and verifier responsibilities stay separate. Before-and-after proof, resolution notes, disputes and decisions remain connected in one audit trail.
 
-BroadPeak supplied no controlled internal standards, credentials or private data.
-Wolf Creek uses a sourced, jurisdiction-labelled external guide (law, conditional
-requirements, industry BMP and venue policy remain distinct); representative
-operating prompts and the EV tenant remain labelled. The shared demo credential
-uses an HttpOnly signed session, but role selection still says “demo persona” and
-does not provide real separation of duty. Google Business Profile publishing is a draft-only
-integration boundary. Live scraping is not a production dependency. Image files
-are content-validated locally, but production still needs identity, object
-storage, malware scanning, retention/deletion policy and legal review.
+:::metrics
+13|FIELD AREAS
+29|GUIDED CHECKS
+362|WOLF CREEK REVIEWS
+1,235|COMPARATOR REVIEWS
+70|REGRESSION TESTS
+0/8|UNSUPPORTED GATE
+:::
 
-First 30 days: load one redacted standards set, replace the shared credential
-with SSO/RBAC, and add authorized
-Business Profile access, and agree the photo/privacy policy. Days 30–60: run one
-property in shadow mode and measure audit time, clarification rate, unsupported
-findings, successful disputes and challenge-panel value. Days 60–90: if those
-metrics earn trust, enable one live property, compare the post-resolution review
-snapshot without claiming causality, and test a second real tenant. The north-star
-metric is not findings produced; it is findings a franchisee can successfully
-dispute.
+## What the working product proves
+
+This is more than a report generator. It is a governed evidence-to-outcome workflow running with live Gemini text, image, audio and video understanding, persistent Postgres data and private evidence storage. Every model call records provider, model, tokens, latency, estimated cost, retries and outcome. A clearly labelled deterministic fixture provider makes every release repeatable.
+
+## Confidence is engineered into the workflow
+
+### Evidence first
+
+Voice enters analysis only after transcript confirmation. Photos can be recommended or required according to the type of issue. High-privacy areas require an explicit privacy attestation. Evidence is target-linked, content-validated, metadata-scrubbed and served through authenticated routes.
+
+### Deliberate AI
+
+The model works through typed, read-only, tenant-scoped tools and schema-validated outputs. Clarification is bounded so conversations converge. A three-lens challenge panel separately tests evidence sufficiency, franchisee fairness and standards fit; disagreement can downgrade or halt a candidate finding.
+
+---
+
+## From insight to operational value
+
+### Human governance
+
+AI proposes; people decide. The reviewer controls the finding, the operator owns the correction, and an independent verifier closes it. Exact statements, standard versions, edits, challenges, disputes, evidence and status changes remain traceable.
+
+### Customer intelligence with clear evidence boundaries
+
+The product analyzes all **362 anonymized Wolf Creek reviews**, including **42 one-star reviews**, and locally filters recent negative written feedback. It surfaces recurring themes and compares aggregate strengths across **1,235 reviews from three nearby Atlanta courses**. Customer sentiment adds context and opportunity signals; it never becomes proof of a field condition.
+
+## One governed operating loop
+
+:::flow
+CAPTURE|Voice, text, photo or video
+STRUCTURE|Clarify and check the guide
+REVIEW|Human decision and challenge
+ACT|Assign an owner and due date
+PROVE|Record before and after evidence
+VERIFY|Independent closure and learning
+:::
+
+## Built, tested and ready to demonstrate
+
+- **70 automated regression tests** cover authentication, concurrency, model budgets, tenant boundaries, evidence matching, privacy, review governance and verified closure.
+- The executable behavioural evaluation passes **14/14 cases**, with live-vision-only cases labelled separately and the **0/8 unsupported-finding gate** clear.
+- The production bundle, Docker image and deployed Render service have been exercised across desktop and mobile flows.
+- A ready-made showcase audit demonstrates capture, clarification, evidence, review, ticketing, resolution and verification without asking the evaluator to create data first.
+- The same engine also runs an **Al Quoz EV & Delivery Depot** tenant with its own locations, zones and EV-specific standards, demonstrating that the workflow is configurable across operating businesses rather than being tied to golf.
+
+## A practical 3-6 week field pilot
+
+### Week 1 - configure and observe
+
+Load one controlled operating pack, connect company identity, agree the evidence/privacy policy, and shadow a Wolf Creek consultant. Establish baselines for walkthrough time, clarification rate, reviewer edits and dispute outcomes.
+
+### Weeks 2-3 - run in shadow mode
+
+Run one property alongside the existing process. Use accepted corrections to refine prompts and classification rules, compare AI packets with human judgment, and measure whether findings are faster to review and easier to defend.
+
+### Weeks 4-6 - prove operational value
+
+Connect approved work-order and customer-response channels, operate one live property, and measure closure time, repeat issues and evidence quality. Use the results to decide the next location or brand. The north-star outcome is **faster, fairer resolution that operators and franchisees can trust**.
+
+## A five-minute showcase
+
+1. **Field Consultant:** open the ready-made visit and inspect the multimodal security case.
+2. **Reviewer:** see the evidence-to-guide packet, uncertainty and challenge outcome.
+3. **Location Operator:** compare before and after evidence and record the correction.
+4. **Brand Leader:** verify the result from the independent closure queue.
+5. **Technical Evaluator:** open Eval Lab and the model ledger to inspect reliability, cost and traceability.
+
+**Field Intelligence shows the product judgment I would bring to BroadPeak: start with the person doing the work, make AI useful without making it authoritative, and design the full operational loop - not only the model call.**
