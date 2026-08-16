@@ -203,6 +203,21 @@ ephemeral SQLite/uploads directory, so assessment data survives normal use but
 resets on redeploy/restart. Persistent production use requires a Render disk or,
 preferably, Postgres plus object storage and migrations.
 
+### Free-service wake-up monitor
+
+`GET /api/active` is a public, read-only uptime probe. It performs no database
+query and no model call, so it cannot consume an audit's AI budget. To reduce
+free-service idle spin-down, create a free UptimeRobot HTTP(S) monitor for:
+
+```text
+https://YOUR-SERVICE.onrender.com/api/active
+```
+
+Use a five-minute interval and expect HTTP 200. This is only a wake-up measure:
+it does not make the free service's filesystem persistent. A Render restart,
+redeploy or replacement still resets visitor-created SQLite data and uploads;
+the seeded showcase is recreated on startup.
+
 ### Optional successful-login notification
 
 Every successful shared-demo login is recorded in **Technical Evaluator →

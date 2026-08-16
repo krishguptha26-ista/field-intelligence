@@ -148,6 +148,13 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertEqual(denied.headers["cache-control"], "no-store")
             health = anonymous.get("/api/health")
             self.assertEqual(health.status_code, 200, health.text)
+            active = anonymous.get("/api/active")
+            self.assertEqual(active.status_code, 200, active.text)
+            self.assertEqual(active.json(), {
+                "ok": True,
+                "service": "fieldintel",
+                "purpose": "external_uptime_probe",
+            })
             wrong = anonymous.post("/api/auth/login", json={
                 "username": "demo-user", "password": "wrong",
             })

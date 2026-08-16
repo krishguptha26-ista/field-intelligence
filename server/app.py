@@ -49,7 +49,9 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
 _BUILD_FINGERPRINT = source_fingerprint()
 
 SESSION_COOKIE = "fieldintel_session"
-_PUBLIC_API_PATHS = {"/api/health", "/api/auth/login", "/api/auth/session"}
+_PUBLIC_API_PATHS = {
+    "/api/active", "/api/health", "/api/auth/login", "/api/auth/session",
+}
 _LOGIN_ATTEMPTS: defaultdict[str, deque[float]] = defaultdict(deque)
 _LOGIN_ATTEMPTS_LOCK = Lock()
 _LOGIN_WINDOW_SECONDS = 300
@@ -192,6 +194,18 @@ def _startup() -> None:
 def health() -> dict:
     return {"ok": True, "build_fingerprint": _BUILD_FINGERPRINT,
             **config.key_status(), **provider_status()}
+
+
+@app.get("/api/active")
+def active_probe() -> dict:
+    """Cheap public target for an external uptime monitor.
+
+    This intentionally avoids the database and model provider. It proves that
+    the web process can answer HTTP without spending analysis budget or
+    exposing configuration metadata.
+    """
+    return {"ok": True, "service": "fieldintel",
+            "purpose": "external_uptime_probe"}
 
 
 class LoginBody(BaseModel):
