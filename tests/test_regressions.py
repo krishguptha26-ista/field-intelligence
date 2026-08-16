@@ -35,9 +35,10 @@ from server.agent import challenge  # noqa: E402
 from server.models import (AuditSession, ClarificationQuestion, DemoAccessEvent, Finding, ModelCall, Observation,
                            OperationalTicket, SessionLocal, Standard, engine,
                            uid)  # noqa: E402
-from server.agent.orchestrator import _scope_representative_standard  # noqa: E402
+from server.agent.orchestrator import (_is_explicit_no_issue,
+                                       _scope_representative_standard)  # noqa: E402
 from server.gateway import GeminiProvider  # noqa: E402
-from server.schemas import (ActionDraft, AnalysisResult, FindingDraft,
+from server.schemas import (ActionDraft, AnalysisResult, Challenge, FindingDraft,
                             MediaDescription, ObservationDecision,
                             PhotoDescription)  # noqa: E402
 
@@ -80,6 +81,17 @@ class TrustBoundaryTests(unittest.TestCase):
         })
         self.assertEqual(signed_in.status_code, 200, signed_in.text)
         return client
+
+    def test_logout_revokes_replayed_signed_session(self) -> None:
+        client = self.authenticated_client()
+        token = client.cookies.get("fieldintel_session")
+        self.assertTrue(token)
+        logged_out = client.post("/api/auth/logout")
+        self.assertEqual(logged_out.status_code, 200, logged_out.text)
+        replay = TestClient(app)
+        replay.cookies.set("fieldintel_session", token)
+        rejected = replay.get("/api/tenants")
+        self.assertEqual(rejected.status_code, 401, rejected.text)
 
     def test_curated_showcase_is_the_only_visible_seeded_visit_and_is_immutable(self) -> None:
         visits = self.client.get("/api/audits", params={
@@ -512,6 +524,30 @@ class TrustBoundaryTests(unittest.TestCase):
             "kind": "NOTE", "text": "specific condition", "zone_id": foreign_zone,
         })
         self.assertEqual(response.status_code, 422, response.text)
+
+    def test_tiny_and_oversized_observations_fail_without_echoing_input(self) -> None:
+        audit_id = self.new_audit()
+        tiny = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE", "text": "x",
+        })
+        self.assertEqual(tiny.status_code, 422, tiny.text)
+        oversized_text = "PRIVATE-TEST-PAYLOAD-" + "x" * 10001
+        oversized = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE", "text": oversized_text,
+        })
+        self.assertEqual(oversized.status_code, 422, oversized.text)
+        self.assertNotIn("PRIVATE-TEST-PAYLOAD", oversized.text)
+
+    def test_packaged_eval_artifact_is_visible_when_runtime_result_is_absent(self) -> None:
+        missing_runtime = Path(__file__).parent / "missing-eval-runtime"
+        with patch.object(config, "VAR_DIR", missing_runtime):
+            response = self.client.get("/api/evals")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertTrue(body["ran"])
+        self.assertEqual(body["artifact"]["delivery"], "packaged_build_fixture")
+        self.assertEqual(body["flaky"], 0)
+        self.assertTrue(body["gate"]["passed"])
 
     def test_negative_statement_never_becomes_no_issue(self) -> None:
         audit_id = self.new_audit()
@@ -1184,6 +1220,87 @@ class TrustBoundaryTests(unittest.TestCase):
         self.assertIn("qualified human review", finding.model_interpretation.lower())
         self.assertTrue(notes)
 
+    def test_representative_guide_uses_plain_human_review_boundary(self) -> None:
+        standard = Standard(
+            id="test-representative", tenant_id="broadpeak-demo", category="cleanliness",
+            code="CLN-01", text="Restrooms are clean and free of standing water.",
+            source_label="REPRESENTATIVE_DEMO_STANDARD",
+        )
+        finding = FindingDraft(
+            standard_code=standard.code, category="cleanliness",
+            title="Standing water", consultant_statement="Standing water at the sink.",
+            model_interpretation="This violates the standard.", severity="HIGH",
+            confidence=.8, recommended_action=ActionDraft(description="Remove the water."),
+        )
+        _scope_representative_standard(finding, standard)
+        self.assertNotIn("broadpeak did not supply", finding.model_interpretation.lower())
+        self.assertIn("not a legal conclusion", finding.model_interpretation.lower())
+
+    def test_provenance_only_challenge_cannot_overturn_observed_condition(self) -> None:
+        class ProvenanceCritic:
+            name = "gemini"
+
+            def generate(self, **_kwargs):
+                return Challenge(
+                    verdict="OVERTURN", objection_basis="PROVENANCE_ONLY",
+                    argument="The cited guide is not a controlled requirement.",
+                    specific_gap="Controlled-standard applicability is not established.",
+                    what_would_settle_it="Map the guide during human standards review.",
+                )
+
+        candidate = FindingDraft(
+            standard_code="CLN-01", category="cleanliness", title="Standing water",
+            consultant_statement="Standing water was visible beside the second sink.",
+            model_interpretation="Standing water is inconsistent with the operating guide.",
+            severity="HIGH", confidence=.82, uncertainty_reasons=["Single visit"],
+            not_supported=["Duration"],
+            recommended_action=ActionDraft(description="Remove water and inspect the source."),
+        )
+        with patch("server.agent.challenge.get_provider", return_value=ProvenanceCritic()):
+            panel = challenge.run_panel(
+                candidate, observation_text=candidate.consultant_statement,
+                standard={"code": "CLN-01", "text": "No standing water",
+                          "category": "cleanliness",
+                          "source_label": "REPRESENTATIVE_DEMO_STANDARD"},
+                tenant_id="broadpeak-demo", audit_id=None, force=True,
+            )
+        self.assertEqual(panel["outcome"], "DOWNGRADED", panel)
+        self.assertEqual(panel["votes"]["overturn"], 0, panel)
+        self.assertEqual(panel["votes"]["weaken"], 3, panel)
+
+    def test_explicit_benign_note_is_terminal_but_exceptions_fail_closed(self) -> None:
+        self.assertTrue(_is_explicit_no_issue(
+            "Pro shop is tidy and well maintained. No issues observed."))
+        self.assertFalse(_is_explicit_no_issue(
+            "No issues observed except standing water beside the sink."))
+
+        class OmittingProvider:
+            name = "fixture"
+
+            def investigate(self, **_kwargs):
+                return {"trace": [], "steps": 0, "stopped": "model_finished",
+                        "provider": "fixture"}
+
+            def generate(self, **_kwargs):
+                return AnalysisResult(decisions=[], overall_summary="No decision returned.")
+
+        audit_id = self.new_audit()
+        zone = next(row for row in self.client.get(
+            "/api/locations/wolf-creek-atlanta/zones").json()
+            if row["name"] == "Pro shop")
+        benign = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE", "zone_id": zone["id"],
+            "text": "Pro shop is tidy and well maintained. No issues observed.",
+        })
+        self.assertEqual(benign.status_code, 200, benign.text)
+        with patch("server.agent.orchestrator.get_provider", return_value=OmittingProvider()):
+            analysed = self.client.post(f"/api/audits/{audit_id}/analyze")
+        self.assertEqual(analysed.status_code, 200, analysed.text)
+        self.assertIn(benign.json()["id"], analysed.json()["no_issue"])
+        audit = self.client.get(f"/api/audits/{audit_id}").json()
+        self.assertFalse(any(q["observation_id"] == benign.json()["id"]
+                             for q in audit["questions"]))
+
     def test_checklist_media_is_preserved_as_finding_evidence(self) -> None:
         class ImageProvider:
             def describe_image(self, **_kwargs):
@@ -1385,7 +1502,7 @@ class TrustBoundaryTests(unittest.TestCase):
                          finding["model_interpretation"].lower())
         self.assertIn("representative guide",
                       finding["model_interpretation"].lower())
-        self.assertTrue(any("BroadPeak did not supply" in reason
+        self.assertTrue(any("not a legal conclusion" in reason
                             for reason in finding["uncertainty_reasons"]))
 
     def test_audit_submit_requires_complete_checks_and_explicit_no_issue(self) -> None:
@@ -1522,6 +1639,48 @@ class TrustBoundaryTests(unittest.TestCase):
         self.upload_photo(audit_id, observation_id=body["observation_id"])
         after = self.client.post(f"/api/audits/{audit_id}/analyze").json()
         self.assertGreaterEqual(len(after["findings"]), 1, after)
+
+    def test_identical_media_upload_is_idempotent_for_the_same_target(self) -> None:
+        class CountingMediaProvider:
+            def __init__(self):
+                self.calls = 0
+
+            def describe_media(self, **_kwargs):
+                self.calls += 1
+                return MediaDescription(
+                    transcript="Entrance signage is present and legible.",
+                    description="Consultant reports the entrance signage condition.",
+                    declined_to_assert=["Condition outside the recorded moment"],
+                )
+
+        audit_id = self.new_audit()
+        zone = next(row for row in self.client.get(
+            "/api/locations/wolf-creek-atlanta/zones").json()
+            if row["name"] == "Arrival & entrance signage")
+        wav = (b"RIFF" + (36).to_bytes(4, "little") + b"WAVEfmt " +
+               b"\x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00" +
+               b"\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00")
+        provider = CountingMediaProvider()
+        with patch("server.app.get_provider", return_value=provider):
+            first = self.client.post(
+                f"/api/audits/{audit_id}/media",
+                data={"media_kind": "AUDIO", "zone_id": zone["id"]},
+                files={"file": ("note.wav", wav, "audio/wav")},
+            )
+            second = self.client.post(
+                f"/api/audits/{audit_id}/media",
+                data={"media_kind": "AUDIO", "zone_id": zone["id"]},
+                files={"file": ("note.wav", wav, "audio/wav")},
+            )
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertTrue(second.json()["deduplicated"])
+        self.assertEqual(first.json()["observation_id"], second.json()["observation_id"])
+        self.assertEqual(provider.calls, 1)
+        audit = self.client.get(f"/api/audits/{audit_id}").json()
+        matching = [row for row in audit["observations"]
+                    if row["payload"].get("media_sha256") == first.json()["media_sha256"]]
+        self.assertEqual(len(matching), 1)
 
     def test_high_privacy_photo_needs_attestation_before_model_call(self) -> None:
         audit_id = self.new_audit()

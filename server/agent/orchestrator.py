@@ -23,6 +23,18 @@ from . import tools as toolkit
 
 VAGUE_BLOCKLIST = ("a little", "kinda", "kind of", "somewhat", "seemed", "maybe")
 
+_EXPLICIT_NO_ISSUE = re.compile(
+    r"\b(?:no|zero)\s+(?:issues?|problems?|concerns?|hazards?)\s+"
+    r"(?:(?:were|are)\s+)?(?:observed|found|identified|noted|seen)\b",
+    re.IGNORECASE,
+)
+_NO_ISSUE_CONTRADICTION = re.compile(
+    r"\b(?:but|except|however|although|yet|other than|apart from|standing water|"
+    r"spill\w*|blocked|broken|missing|absent|dirty|overflow\w*|odou?rs?|hazard|"
+    r"unavailable|expired|crack\w*|leak\w*|no soap|no guard|not clean)\b",
+    re.IGNORECASE,
+)
+
 MAX_TOOL_STEPS = 6
 MAX_TEXT_CLARIFICATIONS = 2
 PHOTO_WORKFLOW_PREFIXES = (
@@ -63,6 +75,13 @@ def _security_reference_ambiguous(value: str) -> bool:
         and not bool(re.search(
             r"\bguard\b|\bofficer\b|\bpersonnel\b|\bcamera\b|\bcctv\b|"
             r"\bequipment\b|\balarm\b|\bgate\b|\baccess control\b", text))
+    )
+
+
+def _is_explicit_no_issue(value: str) -> bool:
+    """Recognise only an unambiguous consultant-recorded clear condition."""
+    return bool(_EXPLICIT_NO_ISSUE.search(value)) and not bool(
+        _NO_ISSUE_CONTRADICTION.search(value)
     )
 
 
@@ -332,10 +351,7 @@ def _scope_representative_standard(finding: FindingDraft, standard: Standard | N
         finding.model_interpretation,
         flags=re.IGNORECASE,
     )
-    boundary = (
-        "Representative demo guidance only; BroadPeak did not supply an "
-        "authoritative standard or confirm applicability."
-    )
+    boundary = "Operating-guide comparison for human review; not a legal conclusion."
     if boundary.lower() not in finding.model_interpretation.lower():
         finding.model_interpretation = f"{finding.model_interpretation.rstrip()} {boundary}"
     return [boundary]
@@ -826,7 +842,8 @@ def _analyze_audit_unlocked(audit_id: str) -> dict:
             # contend with our own lock and all three challengers would abstain.
             panel = challenge.run_panel(
                 f, observation_text=evidence_text,
-                standard=({"code": std.code, "text": std.text, "category": std.category}
+                standard=({"code": std.code, "text": std.text, "category": std.category,
+                           "source_label": std.source_label}
                           if std else None),
                 tenant_id=audit.tenant_id, audit_id=audit_id)
             if panel.get("outcome") in {"OVERTURNED", "INCONCLUSIVE"}:
@@ -1013,6 +1030,25 @@ def _analyze_audit_unlocked(audit_id: str) -> dict:
     for ob in observations:
         if ob.id in processed:
             continue
+        if _is_explicit_no_issue(ob.text):
+            # Settle only questions created by this exact omitted-decision
+            # fallback. Other consultant clarifications remain human-owned.
+            for prior in question_history.get(ob.id, []):
+                if (prior.status == "OPEN" and prior.why_needed ==
+                        "The model returned no decision for this observation; the system fails closed."):
+                    prior.status = "ANSWERED"
+                    prior.answer = "Resolved as an explicit consultant-recorded no-issue condition."
+            created["no_issue"].append(ob.id)
+            created.setdefault("policy_no_issue", []).append(ob.id)
+            continue
+        existing_missing = next((
+            row for row in question_history.get(ob.id, [])
+            if row.status == "OPEN" and row.why_needed ==
+            "The model returned no decision for this observation; the system fails closed."
+        ), None)
+        if existing_missing is not None:
+            created.setdefault("deduplicated_clarifications", []).append(existing_missing.id)
+            continue
         q = ClarificationQuestion(
             id=uid("q"), tenant_id=audit.tenant_id, audit_id=audit_id,
             observation_id=ob.id,
@@ -1183,7 +1219,8 @@ def challenge_existing_finding(finding_id: str, reviewer: str) -> dict:
     panel = challenge.run_panel(
         draft, observation_text=(observation.text if observation else finding.consultant_statement),
         standard=({"code": standard.code, "text": standard.text,
-                   "category": standard.category} if standard else None),
+                   "category": standard.category,
+                   "source_label": standard.source_label} if standard else None),
         tenant_id=finding.tenant_id, audit_id=finding.audit_id, force=True,
     )
     challenge_notes = challenge.apply_outcome(draft, panel)

@@ -14,6 +14,25 @@ tools, argues against its own conclusions, and produces clarifying questions or
 evidence-gated findings that only a human can approve — while public customer
 signals sit beside the audit as context that can never masquerade as proof.
 
+## Assessment evidence index
+
+This is a working product demonstration, not a slideware claim. Review it
+against the assessment rubric using the observable evidence below:
+
+| Rubric area | Implemented evidence | Fast verification |
+|---|---|---|
+| Core workflow | Typed, checklist, written-photo, image, audio and video inputs converge into structured, evidence-linked findings | Open the submitted showcase, then create a new walkthrough |
+| AI judgment | Bounded clarification, `NO_ISSUE`, grounded candidate findings, uncertainty and `not_supported` limits | Enter an ambiguous note, a benign note and a specific issue |
+| Multimodal trust | Images and clips are semantically checked against the selected area or standard before storage | Offer relevant and unrelated media to the same check |
+| Human governance | AI cannot approve findings; approval creates a linked action/ticket; closure requires distinct before/after evidence and independent verification | Follow one showcase case through Reviewer, Operator and Brand Leader views |
+| Cost and reliability | Per-visit model-call ledger, visible pause/recovery, labelled fixture degradation and a source-matched Eval Lab artifact | Open Technical Evaluator → Cost Ledger and Eval Lab |
+| Product judgment | Mobile field companion, role-specific workspaces, non-causal customer signals and explicit demo/production boundaries | Read the visible provenance labels and `docs/adr/` decisions |
+| Security posture | Shared demo authentication, tenant/location checks, immutable submitted audits, private digest-addressed evidence and production-disabled destructive reset/API docs | Run `python -m unittest discover -s tests -v` |
+
+The public assessment remains a POC identity boundary: persona switching
+demonstrates workflow separation but is not SSO/RBAC. The production path is
+documented rather than falsely claimed.
+
 ## 90-second quick start (no keys needed)
 
 ```bash

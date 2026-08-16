@@ -39,13 +39,26 @@ def _demo_svg(name: str, title: str, subtitle: str, accent: str) -> str:
     return digest
 
 
-def _challenge(outcome: str, verdicts: tuple[str, str, str]) -> dict:
+def _challenge(outcome: str, verdicts: tuple[str, str, str], *, case: str) -> dict:
     lenses = ("evidence_sufficiency", "franchisee_advocate", "standards_fit")
-    arguments = {
-        "evidence_sufficiency": "Checked whether the consultant statement and linked evidence support the proposed condition.",
-        "franchisee_advocate": "Looked for a benign explanation, scope error or evidence that would make the proposal unfair.",
-        "standards_fit": "Checked that the cited requirement applies to this location, zone and observed condition.",
+    arguments_by_case = {
+        "security": {
+            "evidence_sufficiency": "The confirmed voice record and targeted entrance photo support the stated 08:05–08:22 coverage gap; they do not establish why the guard was absent.",
+            "franchisee_advocate": "A short operational disruption remains possible, but the finding is limited to the scheduled uncovered window and does not allege neglect or intent.",
+            "standards_fit": "SEC-01 is used as an operating-plan verification prompt, and the finding stays within that scope rather than making a legal or criminal claim.",
+        },
+        "restroom": {
+            "evidence_sufficiency": "The targeted photo and missing inspection-log entry support the observed standing water and missed round; exact duration remains expressly unknown.",
+            "franchisee_advocate": "Mid-service recovery could explain a temporary condition, but it does not erase the captured water and missed record; the proposed action is proportionate.",
+            "standards_fit": "CLN-01 directly concerns restroom condition and inspection cadence, matching both the field observation and the cited record gap.",
+        },
+        "accessibility": {
+            "evidence_sufficiency": "A close-cropped written description without a measurement cannot establish aisle width or a dimensional failure.",
+            "franchisee_advocate": "Publishing a high-priority accessibility finding from an unmeasured partial view would be unfair and disproportionate.",
+            "standards_fit": "ADA-PARK-01 requires dimensional and route evidence that the submitted description does not provide.",
+        },
     }
+    arguments = arguments_by_case[case]
     challenges = [{
         "lens": lens, "verdict": verdict, "argument": arguments[lens],
         "specific_gap": "" if verdict == "UPHOLD" else "The available view does not establish the full required scope.",
@@ -278,7 +291,7 @@ def seed_showcase(db) -> None:
                             "verification_method": "Before/after evidence plus independent manager verification"},
         review_history=[{"at": (visited + timedelta(hours=5)).isoformat(), "actor": "Reviewer (DEMO)",
                          "action": "approve", "reason": "Clarification and targeted evidence support the exception."}],
-        reasoning_trace=_trace(standards["SEC-01"]), challenge_record=_challenge("UPHELD", ("UPHOLD", "UPHOLD", "UPHOLD")),
+        reasoning_trace=_trace(standards["SEC-01"]), challenge_record=_challenge("UPHELD", ("UPHOLD", "UPHOLD", "UPHOLD"), case="security"),
         created_at=visited + timedelta(minutes=10), updated_at=visited + timedelta(hours=5))
     restroom_finding = Finding(
         id="finding_showcase_restroom", tenant_id="broadpeak-demo", audit_id=audit.id,
@@ -301,7 +314,7 @@ def seed_showcase(db) -> None:
                     "corrective_action": "Restore inspection round",
                     "days_since_prior": 118,
                     "summary": "Recurrence: a restroom cleanliness finding was verified closed 118 days earlier and has returned."},
-        challenge_record=_challenge("UPHELD", ("UPHOLD", "UPHOLD", "UPHOLD")),
+        challenge_record=_challenge("UPHELD", ("UPHOLD", "UPHOLD", "UPHOLD"), case="restroom"),
         created_at=visited + timedelta(hours=2, minutes=5), updated_at=visited + timedelta(hours=5, minutes=10))
     access_finding = Finding(
         id="finding_showcase_accessibility", tenant_id="broadpeak-demo", audit_id=audit.id,
@@ -318,7 +331,7 @@ def seed_showcase(db) -> None:
         review_history=[{"at": (visited + timedelta(hours=5, minutes=20)).isoformat(), "actor": "Reviewer (DEMO)",
                          "action": "reject", "reason": "Insufficient evidence; do not convert a possibility into a finding."}],
         reasoning_trace=_trace(standards["ADA-PARK-01"]),
-        challenge_record=_challenge("OVERTURNED", ("OVERTURN", "OVERTURN", "WEAKEN")),
+        challenge_record=_challenge("OVERTURNED", ("OVERTURN", "OVERTURN", "WEAKEN"), case="accessibility"),
         created_at=visited + timedelta(minutes=40), updated_at=visited + timedelta(hours=5, minutes=20))
     db.add_all([support_finding, security_finding, restroom_finding, access_finding]); db.flush()
 

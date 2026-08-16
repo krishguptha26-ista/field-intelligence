@@ -109,13 +109,23 @@ def run_panel(finding, *, observation_text: str, standard: dict | None,
             c: Challenge = provider.generate(
                 purpose=f"challenge:{lens_name}", prompt=prompt, schema=Challenge,
                 tenant_id=tenant_id, audit_id=audit_id)
-            return {"lens": lens_name, "verdict": c.verdict, "argument": c.argument,
+            verdict = c.verdict
+            # A source-class caveat limits the claim; it does not erase a
+            # directly observed operational condition. Keep that objection in
+            # front of the reviewer without turning it into an impossible
+            # consultant request for corporate policy confirmation.
+            if c.objection_basis == "PROVENANCE_ONLY" and verdict == "OVERTURN":
+                verdict = "WEAKEN"
+            return {"lens": lens_name, "verdict": verdict,
+                    "objection_basis": c.objection_basis,
+                    "argument": c.argument,
                     "specific_gap": c.specific_gap,
                     "what_would_settle_it": c.what_would_settle_it}
         except Exception as e:
             # A challenger that fails must not silently become an UPHOLD. It is
             # recorded as ABSTAIN and counts toward nothing.
             return {"lens": lens_name, "verdict": "ABSTAIN",
+                    "objection_basis": "NONE",
                     "argument": f"Challenger unavailable: {type(e).__name__}",
                     "specific_gap": "", "what_would_settle_it": ""}
 

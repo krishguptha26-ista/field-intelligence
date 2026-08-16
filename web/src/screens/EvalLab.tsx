@@ -66,11 +66,21 @@ export default function EvalLab() {
 
       <div className="notice" style={{ margin: "14px 0 6px" }}>
         Last run {new Date(data.at).toLocaleString()} · {data.provider?.reason}
-        {data.artifact?.git_commit && (
+        {data.system_under_test?.build_fingerprint && (
+          <> · build <span className="mono">{data.system_under_test.build_fingerprint.slice(0, 8)}</span></>
+        )}
+        {data.artifact?.git_commit && data.artifact.git_commit !== "unknown" && (
           <> · commit <span className="mono">{data.artifact.git_commit.slice(0, 8)}</span>
             {data.artifact.git_dirty ? " + uncommitted changes" : ""}</>
         )}
       </div>
+      {data.artifact?.delivery === "packaged_build_fixture" && (
+        <div className="notice" style={{ margin: "0 0 14px" }}>
+          <b>Build-time fixture evaluation.</b> This artifact was generated from the
+          source packaged in the deployed image. It is not presented as a live Gemini
+          or live-vision run. {data.artifact?.scope}
+        </div>
+      )}
 
       {data.cases.map((c: any) => (
         <div key={c.id} className="card" style={{ borderLeft: `3px solid ${colour(c)}` }}>

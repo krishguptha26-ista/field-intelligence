@@ -78,6 +78,9 @@ class Challenge(BaseModel):
     is worse than no panel because it manufactures the appearance of scrutiny.
     """
     verdict: Literal["UPHOLD", "WEAKEN", "OVERTURN"]
+    objection_basis: Literal[
+        "NONE", "EVIDENCE", "SCOPE", "SEVERITY", "PROVENANCE_ONLY"
+    ] = "NONE"
     argument: str = Field(min_length=3, max_length=3000)  # the case, in plain language
     specific_gap: str = Field(default="", max_length=1500)
     what_would_settle_it: str = Field(default="", max_length=1500)

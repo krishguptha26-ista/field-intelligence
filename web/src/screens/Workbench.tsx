@@ -396,6 +396,9 @@ export default function Workbench({ ctx }: { ctx: Ctx }) {
                 {finding.challenge_record?.ran ? (
                   <h3>
                     Outcome: <span className={`badge ${finding.challenge_record.outcome === "UPHELD" ? "ok" : "amber"}`}>{finding.challenge_record.outcome}</span>
+                    {finding.challenge_record.provenance === "DEMO_FIXTURE" && (
+                      <span className="badge fixture">Illustrative seeded challenge</span>
+                    )}
                     <small>{finding.challenge_record.votes?.uphold ?? 0} uphold · {finding.challenge_record.votes?.weaken ?? 0} weaken · {finding.challenge_record.votes?.overturn ?? 0} overturn</small>
                   </h3>
                 ) : <h3>Not challenged yet</h3>}

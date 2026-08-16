@@ -607,6 +607,7 @@ class FixtureProvider:
         if overreach and not payload.get("model_stated_uncertainty"):
             return Challenge(
                 verdict="WEAKEN",
+                objection_basis="EVIDENCE",
                 argument=("The interpretation asserts a continuing or causal state "
                           f"({', '.join(overreach)}) while declaring no uncertainty. A "
                           "single visit observes a moment, not a pattern."),
@@ -616,6 +617,7 @@ class FixtureProvider:
         if not payload.get("model_says_not_supported"):
             return Challenge(
                 verdict="WEAKEN",
+                objection_basis="EVIDENCE",
                 argument=("Nothing is listed as unsupported. Every single observation "
                           "leaves something unestablished; an empty list signals the "
                           "limits were not considered."),
@@ -623,6 +625,7 @@ class FixtureProvider:
                 what_would_settle_it="An explicit statement of what was not observed.")
         return Challenge(
             verdict="UPHOLD",
+            objection_basis="NONE",
             argument=("Deterministic checks find no overreach: limits are stated and the "
                       "interpretation does not assert duration or cause."),
             what_would_settle_it="")

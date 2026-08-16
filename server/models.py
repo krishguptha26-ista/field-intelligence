@@ -284,6 +284,14 @@ class DemoAccessEvent(Base, TimestampMixin):
     detail: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class RevokedDemoSession(Base, TimestampMixin):
+    """A revoked signed demo-session identifier, retained until token expiry."""
+    __tablename__ = "revoked_demo_sessions"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    username: Mapped[str] = mapped_column(String, index=True)
+    expires_at: Mapped[int] = mapped_column(Integer, index=True)
+
+
 engine = create_engine(
     config.DATABASE_URL,
     connect_args={"check_same_thread": False}

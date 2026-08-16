@@ -786,7 +786,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
 
     {auditLocked ? <section className="fi-record-locked" role="status">
       <span aria-hidden="true">✓</span><div><b>Submitted record · read only</b>
-        <p>Evidence and guide responses are locked. Explore each area, review the handoff, then use <i>Preview workspace as</i> to see reviewer and resolution views.</p></div>
+        <p>Evidence and guide responses are locked. Explore each area, review the handoff, then use <i>View as role (demo)</i> to see reviewer and resolution views.</p></div>
     </section> : <section className="fi-composer" data-tour="capture" aria-label="Capture an observation">
       <div className="fi-composer-intro"><span className="fi-orb">AI</span><div><b>Tell me what you notice.</b><span>Capture now and keep walking. I will structure it in the background.</span></div></div>
       <VoiceRecorder disabled={Boolean(budgetGate) || (currentZone?.privacy_level === "HIGH" && !privacyAttested)}

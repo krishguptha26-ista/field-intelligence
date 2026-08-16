@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from .models import (AuditSession, ExternalSignal, Location, SessionLocal,
-                     Standard, Tenant, Zone, init_db, uid)
+from .models import (Action, AuditSession, ExternalSignal, Finding, Location,
+                     OperationalTicket, SessionLocal, Standard, Tenant, Zone,
+                     init_db, uid)
 from .regulatory import WOLF_CREEK_STANDARD_DEFS
 
 
@@ -66,12 +67,35 @@ def _migrate_photo_attachment_labels(db) -> None:
         db.commit()
 
 
+def _migrate_legacy_representative_disclaimer(db) -> None:
+    """Remove the retired, needlessly defensive sentence from saved records."""
+    legacy = (
+        "Representative demo guidance only; BroadPeak did not supply an "
+        "authoritative standard or confirm applicability."
+    )
+    replacement = "Operating-guide comparison for human review; not a legal conclusion."
+    changed = False
+    for model, field in (
+        (Finding, "model_interpretation"),
+        (Action, "description"),
+        (OperationalTicket, "description"),
+    ):
+        for row in db.query(model).all():
+            current = getattr(row, field) or ""
+            if legacy in current:
+                setattr(row, field, current.replace(legacy, replacement))
+                changed = True
+    if changed:
+        db.commit()
+
+
 def seed() -> None:
     init_db()
     db = SessionLocal()
     if db.query(Tenant).count() > 0:
         _sync_wolf_creek_pack(db)
         _migrate_photo_attachment_labels(db)
+        _migrate_legacy_representative_disclaimer(db)
         _seed_history(db)   # additive: back-fills history into an existing demo db
         db.close()
         return
@@ -156,6 +180,7 @@ def seed() -> None:
     db.commit()
     _sync_wolf_creek_pack(db)
     _migrate_photo_attachment_labels(db)
+    _migrate_legacy_representative_disclaimer(db)
     _seed_history(db)
     db.close()
 

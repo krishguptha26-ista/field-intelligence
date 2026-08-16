@@ -27,12 +27,28 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY server/ ./server/
 COPY prompts/ ./prompts/
 COPY data/ ./data/
+COPY scripts/build_eval_artifact.py ./scripts/build_eval_artifact.py
 COPY --from=web /web/dist ./web/dist
 
 # var/ holds the SQLite file, uploaded photos and the scrape cache. On a host
 # with an ephemeral filesystem this resets on every deploy, which is correct for
 # a demo: the seed is the demo, and /api/demo-reset restores it mid-call.
 RUN mkdir -p var/uploads var/cache
+
+# The deployed Eval Lab must prove the source inside this image, not display a
+# stale laptop artifact. Run the deterministic fixture pipeline during the
+# build, fail the image if its executable cases or release gate fail, and then
+# remove the temporary evaluation database/captures.
+RUN APP_ENV=development \
+    LLM_PROVIDER=fixture \
+    DATABASE_URL=sqlite:////tmp/fieldintel-build-eval.db \
+    DEMO_USERNAME=demo-user \
+    DEMO_PASSWORD=Broadpeak-demo-user \
+    SESSION_SECRET=build-only-eval-session-secret-not-used-in-runtime \
+    python scripts/build_eval_artifact.py \
+    && rm -f /tmp/fieldintel-build-eval.db* \
+    && rm -rf var \
+    && mkdir -p var/uploads var/cache
 
 EXPOSE 8000
 # $PORT is set by the host (Render, Fly, Cloud Run); 8000 is the local default.

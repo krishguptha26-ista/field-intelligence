@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import re
+import secrets
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,7 @@ from threading import Lock
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -40,12 +42,19 @@ from .locks import audit_lock
 from .field_guide import ZONE_CHECK_CODES, issue_photo_policy
 from .models import (Action, AuditLog, AuditSession, ClarificationQuestion, DemoAccessEvent,
                      EvidenceItem, Finding, Location, ModelCall, Observation,
-                     OperationalTicket, TaxonomyProposal,
+                     OperationalTicket, RevokedDemoSession, TaxonomyProposal,
                      SessionLocal, Standard, Tenant, Zone, init_db, uid)
 from .seed import seed
 from .regulatory import (WOLF_CREEK_JURISDICTION, standard_metadata)
 
-app = FastAPI(title="Field Intelligence", version=config.APP_VERSION)
+_PRODUCTION = config.APP_ENV == "production"
+app = FastAPI(
+    title="Field Intelligence",
+    version=config.APP_VERSION,
+    docs_url=None if _PRODUCTION else "/docs",
+    redoc_url=None if _PRODUCTION else "/redoc",
+    openapi_url=None if _PRODUCTION else "/openapi.json",
+)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
                    allow_methods=["*"], allow_headers=["*"])
 _BUILD_FINGERPRINT = source_fingerprint()
@@ -63,7 +72,9 @@ _LOGIN_MAX_ATTEMPTS = 10
 def _session_token(username: str) -> str:
     expires = int(time.time()) + config.SESSION_HOURS * 3600
     payload = base64.urlsafe_b64encode(
-        json.dumps({"sub": username, "exp": expires}, separators=(",", ":")).encode()
+        json.dumps({"sub": username, "exp": expires,
+                    "jti": secrets.token_urlsafe(18)},
+                   separators=(",", ":")).encode()
     ).decode().rstrip("=")
     signature = hmac.new(
         config.SESSION_SECRET.encode(), payload.encode(), hashlib.sha256
@@ -71,7 +82,7 @@ def _session_token(username: str) -> str:
     return f"{payload}.{signature}"
 
 
-def _session_user(token: str | None) -> str | None:
+def _verified_session_payload(token: str | None) -> dict | None:
     if not token or "." not in token or not config.SESSION_SECRET:
         return None
     payload, signature = token.rsplit(".", 1)
@@ -86,9 +97,24 @@ def _session_user(token: str | None) -> str | None:
         if int(data.get("exp") or 0) <= int(time.time()):
             return None
         username = str(data.get("sub") or "").strip()
-        return username if username == config.DEMO_USERNAME else None
+        jti = str(data.get("jti") or "").strip()
+        if username != config.DEMO_USERNAME or not jti:
+            return None
+        return data
     except (ValueError, TypeError, json.JSONDecodeError):
         return None
+
+
+def _session_user(token: str | None) -> str | None:
+    data = _verified_session_payload(token)
+    if data is None:
+        return None
+    db = SessionLocal()
+    try:
+        revoked = db.get(RevokedDemoSession, str(data["jti"])) is not None
+    finally:
+        db.close()
+    return None if revoked else str(data["sub"])
 
 
 @app.middleware("http")
@@ -169,11 +195,12 @@ def _verification_capabilities(*, ticket: OperationalTicket | None = None,
                       if role.casefold() not in actors]
     return {
         "requires_independent_verifier": True,
+        "identity_enforced": False,
         "excluded_actors": sorted(actors.values(), key=str.casefold),
         "eligible_verifier_roles": eligible_roles,
         "independent_verifier_available": bool(eligible_roles),
         "identity_boundary": (
-            "POC display-role enforcement; production requires authenticated user identity"
+            "Workflow separation is demonstrated; actor identity is not enforced by the shared demo login. Production requires SSO/RBAC."
         ),
     }
 
@@ -189,6 +216,16 @@ def _blob_store_handler(_request, _exc: BlobStoreUnavailable):
         status_code=503,
         content={"detail": "persistent evidence storage is temporarily unavailable"},
     )
+
+
+@app.exception_handler(RequestValidationError)
+def _validation_error_without_input_echo(_request, exc: RequestValidationError):
+    """Keep useful diagnostics without reflecting submitted payloads."""
+    detail = [
+        {key: error[key] for key in ("loc", "msg", "type", "url") if key in error}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": detail})
 
 
 @app.on_event("startup")
@@ -359,7 +396,19 @@ def auth_login(body: LoginBody, request: Request, background_tasks: BackgroundTa
 
 
 @app.post("/api/auth/logout")
-def auth_logout():
+def auth_logout(request: Request):
+    data = _verified_session_payload(request.cookies.get(SESSION_COOKIE))
+    if data is not None:
+        db = SessionLocal()
+        try:
+            if db.get(RevokedDemoSession, str(data["jti"])) is None:
+                db.add(RevokedDemoSession(
+                    id=str(data["jti"]), username=str(data["sub"]),
+                    expires_at=int(data["exp"]),
+                ))
+                db.commit()
+        finally:
+            db.close()
     response = JSONResponse({"authenticated": False})
     response.delete_cookie(SESSION_COOKIE, path="/", samesite="strict")
     return response
@@ -372,9 +421,10 @@ def workflow_capabilities() -> dict:
         "roles": _WORKFLOW_ROLE_CAPABILITIES,
         "verification_policy": {
             "requires_independent_verifier": True,
+            "identity_enforced": False,
             "eligible_role_labels": list(_INDEPENDENT_VERIFIER_ROLES),
             "identity_boundary": (
-                "Role labels drive the demo UI; production enforcement requires SSO/RBAC."
+                "Role labels demonstrate the workflow; the shared demo login does not prove actor identity. Production enforcement requires SSO/RBAC."
             ),
         },
     }
@@ -591,7 +641,7 @@ class ObservationCreate(BaseModel):
     # Provenance-sensitive kinds (CHECKLIST, PHOTO_DESCRIPTION, VOICE_TRANSCRIPT,
     # VIDEO_DESCRIPTION) are server-assigned by their dedicated endpoints.
     kind: Literal["NOTE", "WRITTEN_PHOTO_DESCRIPTION"] = "NOTE"
-    text: str = Field(min_length=1, max_length=10000)
+    text: str = Field(min_length=3, max_length=10000)
     zone_id: str | None = None
 
     @field_validator("text")
@@ -1082,6 +1132,33 @@ ALLOWED_MEDIA_TYPES = {
 }
 
 
+def _prior_upload(db, *, audit_id: str, digest_key: str, digest: str,
+                  kinds: set[str], zone_id: str | None,
+                  support_observation_id: str | None = None,
+                  standard_code: str | None = None) -> Observation | None:
+    """Return the same already-accepted capture for an identical target.
+
+    Digest identity alone is not enough: one file may legitimately be linked to
+    two different checks. Idempotency is scoped to audit, media kind, zone and
+    explicit evidence target.
+    """
+    for row in db.query(Observation).filter_by(audit_id=audit_id).all():
+        payload = row.payload or {}
+        if row.kind not in kinds or payload.get(digest_key) != digest:
+            continue
+        if row.zone_id != zone_id:
+            continue
+        if payload.get("supports_observation_id") != support_observation_id:
+            continue
+        row_standard = (payload.get("evidence_for_standard_code")
+                        if digest_key == "image_sha256"
+                        else payload.get("standard_code"))
+        if row_standard != standard_code:
+            continue
+        return row
+    return None
+
+
 async def _read_upload_limited(file: UploadFile, limit: int) -> bytes:
     chunks: list[bytes] = []
     total = 0
@@ -1130,6 +1207,13 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
     observation then goes through the same investigate → decide → human-approval
     path as a typed note. Nothing here can create a finding.
     """
+    # Starlette can represent omitted optional multipart text fields as an
+    # empty string on some runtime versions. Normalise those values before
+    # foreign-key validation or persistence so Linux and local execution have
+    # identical semantics.
+    zone_id = (zone_id or "").strip() or None
+    supports_observation_id = (supports_observation_id or "").strip() or None
+    evidence_for_standard_code = (evidence_for_standard_code or "").strip() or None
     db = SessionLocal()
     a = db.get(AuditSession, audit_id)
     if a is None:
@@ -1200,6 +1284,30 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
         raise HTTPException(415, "file contents are not a valid supported image")
 
     digest = hashlib.sha256(raw).hexdigest()
+    prior = _prior_upload(
+        db, audit_id=audit_id, digest_key="image_sha256", digest=digest,
+        kinds={"PHOTO_DESCRIPTION"}, zone_id=zone_id,
+        support_observation_id=supports_observation_id,
+        standard_code=evidence_for_standard_code,
+    )
+    if prior is not None:
+        payload = prior.payload or {}
+        out = {
+            "accepted": True, "deduplicated": True,
+            "observation_id": prior.id, "text": prior.text,
+            "image_sha256": digest,
+            "declined_to_assert": payload.get("declined_to_assert") or [],
+            "image_quality_issues": payload.get("image_quality_issues") or [],
+            "people_visible": payload.get("people_visible"),
+            "zone_privacy_level": payload.get("zone_privacy_level", privacy),
+            "provenance": prior.provenance,
+            "supports_observation_id": supports_observation_id,
+            "evidence_for_standard_code": evidence_for_standard_code,
+            "requires_manual_review": payload.get("requires_manual_review", False),
+            "ticket_id": None,
+        }
+        db.close()
+        return out
     desc = None
     vision_error = ""
     try:
@@ -1417,6 +1525,8 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
                     standard_code: str | None = Form(None),
                     privacy_attested: bool = Form(False)) -> dict:
     """Audio/video -> neutral observation; never a direct finding."""
+    zone_id = (zone_id or "").strip() or None
+    standard_code = (standard_code or "").strip() or None
     db = SessionLocal()
     audit = db.get(AuditSession, audit_id)
     if audit is None:
@@ -1457,6 +1567,31 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
         db.close()
         raise HTTPException(415, "file contents do not match the declared media type")
 
+    digest = hashlib.sha256(raw).hexdigest()
+    prior = _prior_upload(
+        db, audit_id=audit_id, digest_key="media_sha256", digest=digest,
+        kinds={"VOICE_TRANSCRIPT"} if media_kind == "AUDIO" else {"VIDEO_DESCRIPTION"},
+        zone_id=zone_id, standard_code=standard_code,
+    )
+    if prior is not None:
+        payload = prior.payload or {}
+        out = {
+            "accepted": True, "deduplicated": True,
+            "observation_id": prior.id, "text": prior.text,
+            "media_sha256": digest, "media_kind": media_kind,
+            "provenance": prior.provenance,
+            "verification_state": payload.get("verification_state"),
+            "awaiting_confirmation": payload.get("awaiting_confirmation", False),
+            "transcript": payload.get("transcript", ""),
+            "observable_facts": payload.get("observable_facts") or [],
+            "timecoded_facts": payload.get("timecoded_facts") or [],
+            "declined_to_assert": payload.get("declined_to_assert") or [],
+            "quality_issues": payload.get("quality_issues") or [],
+            "people_visible": payload.get("people_visible"),
+        }
+        db.close()
+        return out
+
     try:
         with audit_lock(audit_id):
             desc = get_provider().describe_media(
@@ -1486,7 +1621,6 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
                 "people_visible": True, "quality_issues": desc.quality_issues,
                 "note": "The clip was analysed transiently but was not stored."}
 
-    digest = hashlib.sha256(raw).hexdigest()
     put_blob(digest, raw, mime)
 
     if media_kind == "AUDIO":
@@ -2715,10 +2849,16 @@ def audit_trail(entity_id: str | None = None) -> list[dict]:
 
 @app.get("/api/evals")
 def evals() -> dict:
-    path = config.VAR_DIR / "eval_results.json"
+    runtime_path = config.VAR_DIR / "eval_results.json"
+    packaged_path = config.ROOT / "data" / "eval_results.json"
+    path = runtime_path if runtime_path.exists() else packaged_path
     if not path.exists():
         return {"ran": False, "note": "Run `python -m server.evals.runner` to generate results."}
-    return json.loads(path.read_text())
+    result = json.loads(path.read_text())
+    result.setdefault("artifact", {})["delivery"] = (
+        "runtime" if path == runtime_path else "packaged_build_fixture"
+    )
+    return result
 
 
 @app.post("/api/demo-reset")

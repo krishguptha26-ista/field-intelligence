@@ -204,7 +204,7 @@ export default function App() {
         <div className="spacer" />
         <button className="tour-launch" onClick={() => setTourOpen(true)}>How it works</button>
         <div className="persona-switcher">
-          <label htmlFor="persona-side">Preview workspace as</label>
+          <label htmlFor="persona-side">View as role (demo)</label>
           <select id="persona-side" value={role} onChange={e => changeRole(e.target.value)}>{personaOptions}</select>
         </div>
         <button className="signout" onClick={async () => {
@@ -238,7 +238,7 @@ export default function App() {
           <div className="mobile-persona">
             <span>Workspace</span>
             <div className="mobile-persona-controls">
-              <select aria-label="Preview workspace as" value={role} onChange={e => changeRole(e.target.value)}>{personaOptions}</select>
+              <select aria-label="View as role (demo)" value={role} onChange={e => changeRole(e.target.value)}>{personaOptions}</select>
               <button className="mobile-signout" onClick={async () => {
                 await api.logout().catch(() => {});
                 setAuthNotice("");
