@@ -54,6 +54,13 @@ def _object_url(digest: str) -> str:
             f"{config.SUPABASE_STORAGE_BUCKET}/{digest}")
 
 
+def _supabase_error_code(response: httpx.Response) -> str:
+    try:
+        return str(response.json().get("code") or "")
+    except ValueError:
+        return ""
+
+
 def ensure_remote_bucket() -> None:
     """Create the private bucket once; fail startup on a broken deployment."""
     if not config.REMOTE_STORAGE_CONFIGURED:
@@ -65,10 +72,7 @@ def ensure_remote_bucket() -> None:
             response = client.get(bucket_url, headers=_headers())
             missing_bucket = response.status_code == 404
             if response.status_code == 400:
-                try:
-                    missing_bucket = response.json().get("code") == "NoSuchBucket"
-                except ValueError:
-                    missing_bucket = False
+                missing_bucket = _supabase_error_code(response) == "NoSuchBucket"
             if missing_bucket:
                 response = client.post(
                     f"{config.SUPABASE_URL}/storage/v1/bucket",
@@ -106,7 +110,9 @@ def get_blob(digest: str) -> StoredBlob | None:
     if config.REMOTE_STORAGE_CONFIGURED:
         try:
             response = httpx.get(_object_url(digest), headers=_headers(), timeout=30)
-            if response.status_code == 404:
+            if (response.status_code == 404
+                    or (response.status_code == 400
+                        and _supabase_error_code(response) == "NoSuchKey")):
                 return None
             response.raise_for_status()
             mime = response.headers.get("content-type", "application/octet-stream")

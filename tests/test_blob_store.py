@@ -60,6 +60,12 @@ class PersistentBlobStoreTests(unittest.TestCase):
         self.assertEqual(blob.content, b"private evidence")
         self.assertEqual(blob.mime_type, "image/png")
 
+    @patch("server.blob_store.httpx.get")
+    def test_supabase_missing_object_400_maps_to_not_found(self, get) -> None:
+        get.return_value.status_code = 400
+        get.return_value.json.return_value = {"code": "NoSuchKey"}
+        self.assertIsNone(get_blob(self.digest))
+
     @patch("server.blob_store.httpx.request")
     def test_remote_delete_targets_only_the_exact_digest(self, request) -> None:
         request.return_value.raise_for_status = MagicMock()
