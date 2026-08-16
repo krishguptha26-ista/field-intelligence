@@ -364,9 +364,9 @@
 
 @media (max-width: 800px) {
   .main:has(.fi-shell) { padding: 0 !important; background: var(--fi-paper); }
-  .main:has(.fi-shell) > .topbar { display: none; }
+  .main:has(.fi-shell) > .topbar { display: grid; margin: 0; padding: 9px 10px; }
   .fi-shell { min-height: 100dvh; padding: 18px 14px 104px; border-radius: 0; }
-  .fi-visit-header { position: sticky; z-index: 7; top: 63px; margin: -18px -14px 12px; padding: 13px 14px 10px; background: rgba(246, 244, 238, .95); backdrop-filter: blur(10px); }
+  .fi-visit-header { position: sticky; z-index: 7; top: 68px; margin: -18px -14px 12px; padding: 13px 14px 10px; background: rgba(246, 244, 238, .95); backdrop-filter: blur(10px); }
   .fi-visit-header h1 { font-size: 24px; }
   .fi-visit-header-actions { gap: 5px; }
   .fi-visit-header-actions > button { min-height: 42px; padding-inline: 9px; font-size: 11px; }
