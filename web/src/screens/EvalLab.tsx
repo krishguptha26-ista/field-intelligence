@@ -16,10 +16,10 @@ export default function EvalLab() {
     <div>
       <h1>Eval Lab</h1>
       <div className="sub">
-        Golden behaviour cases run against the live pipeline. Each case runs{" "}
-        {data.repeats}× — because a single run of a non-deterministic system tells you
-        almost nothing, and a case that passes sometimes is a finding, not a re-run.
-        The release gate is the unsupported-finding rate, never answer similarity.
+        Golden behaviour cases run against the real pipeline contract. This source-matched build
+        gate runs deterministic fixture cases once; live or non-deterministic validation uses
+        repeated runs and reports flaky cases instead of rerunning to a pass. The release gate is
+        the unsupported-finding rate, never answer similarity.
       </div>
 
       <div className="row">

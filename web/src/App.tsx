@@ -135,6 +135,20 @@ export default function App() {
     api.tenants().then(setTenants).catch(() => {});
   }, [authUser]);
 
+  useEffect(() => {
+    if (!authUser || role !== "Technical Evaluator") return;
+    let active = true;
+    const refreshHealth = () => api.health().then(next => {
+      if (active) setHealth(next);
+    }).catch(() => {});
+    void refreshHealth();
+    const timer = window.setInterval(refreshHealth, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [authUser, role]);
+
   useEffect(() => { localStorage.setItem("fieldintel.screen", screen); }, [screen]);
   useEffect(() => { localStorage.setItem("fieldintel.role", role); }, [role]);
 
