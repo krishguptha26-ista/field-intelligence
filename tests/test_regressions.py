@@ -167,6 +167,10 @@ class TrustBoundaryTests(unittest.TestCase):
             self.assertIn("HttpOnly", signed_in.headers["set-cookie"])
             self.assertIn("SameSite=strict", signed_in.headers["set-cookie"])
             self.assertEqual(anonymous.get("/api/tenants").status_code, 200)
+            pasted = anonymous.post("/api/auth/login", json={
+                "username": "demo-user", "password": "  Broadpeak-demo-user\n",
+            })
+            self.assertEqual(pasted.status_code, 200, pasted.text)
 
     def test_private_media_route_preserves_browser_range_requests(self) -> None:
         from server.blob_store import StoredBlob

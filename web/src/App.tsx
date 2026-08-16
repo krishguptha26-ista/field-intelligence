@@ -40,6 +40,7 @@ function LoginScreen({ onSignedIn, notice }: {
 }) {
   const [username, setUsername] = useState("demo-user");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submit = async (event: React.FormEvent) => {
@@ -49,7 +50,10 @@ function LoginScreen({ onSignedIn, notice }: {
       const session = await api.login(username, password);
       onSignedIn(session.username);
     } catch (err: any) {
-      setError(err.message || "Sign-in failed");
+      const message = err.message || "Sign-in failed";
+      setError(message.includes("invalid username or password")
+        ? "Invalid username or password. Both are case-sensitive; check capitalization and pasted spaces."
+        : message);
     } finally { setBusy(false); }
   };
   return <main className="login-shell">
@@ -60,10 +64,18 @@ function LoginScreen({ onSignedIn, notice }: {
       <p>Use the shared demo credential provided with this assessment. Do not upload personal or confidential material.</p>
       {notice && <div className="login-notice" role="status">{notice}</div>}
       <form onSubmit={submit}>
-        <label>Username<input autoComplete="username" value={username}
+        <label>Username<input autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username}
           onChange={event => setUsername(event.target.value)} /></label>
-        <label>Password<input type="password" autoComplete="current-password" value={password}
-          onChange={event => setPassword(event.target.value)} autoFocus /></label>
+        <label>Password<div className="password-field"><input
+          type={showPassword ? "text" : "password"} autoComplete="current-password"
+          autoCapitalize="none" autoCorrect="off" spellCheck={false} value={password}
+          onChange={event => setPassword(event.target.value)} autoFocus />
+          <button type="button" className="password-toggle" aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>
+            {showPassword ? "Hide" : "Show"}
+          </button></div>
+          <span className="login-field-hint">Case-sensitive. Use Show to verify capitalization before signing in.</span>
+        </label>
         {error && <div className="login-error" role="alert">{error}</div>}
         <button type="submit" disabled={busy || !username.trim() || !password}>
           {busy ? "Signing in…" : "Sign in"}
@@ -225,7 +237,14 @@ export default function App() {
           </div>
           <div className="mobile-persona">
             <span>Workspace</span>
-            <select aria-label="Preview workspace as" value={role} onChange={e => changeRole(e.target.value)}>{personaOptions}</select>
+            <div className="mobile-persona-controls">
+              <select aria-label="Preview workspace as" value={role} onChange={e => changeRole(e.target.value)}>{personaOptions}</select>
+              <button className="mobile-signout" onClick={async () => {
+                await api.logout().catch(() => {});
+                setAuthNotice("");
+                setAuthUser(null);
+              }}>Sign out</button>
+            </div>
           </div>
           <span className="location-name">{locName}</span>
           <button className="tour-launch topbar-tour" onClick={() => setTourOpen(true)}>Help</button>

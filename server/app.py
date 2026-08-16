@@ -317,8 +317,10 @@ def auth_login(body: LoginBody, request: Request, background_tasks: BackgroundTa
             raise HTTPException(429, "too many sign-in attempts; try again in a few minutes")
         attempts.append(now)
     valid_user = hmac.compare_digest(body.username.strip(), config.DEMO_USERNAME)
+    # Mobile copy/paste can add surrounding whitespace. The shared demo
+    # credential itself never intentionally begins or ends with whitespace.
     valid_password = bool(config.DEMO_PASSWORD) and hmac.compare_digest(
-        body.password, config.DEMO_PASSWORD)
+        body.password.strip(), config.DEMO_PASSWORD)
     if not (valid_user and valid_password):
         raise HTTPException(401, "invalid username or password")
     with _LOGIN_ATTEMPTS_LOCK:
