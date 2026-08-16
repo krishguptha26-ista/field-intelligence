@@ -23,6 +23,19 @@ services:
       - key: APP_DEMO_MODE
         value: "true"
 
+      # One shared assessment account. The password and signing secret are
+      # required in production and are never committed to the repository.
+      - key: DEMO_USERNAME
+        value: demo-user
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: SESSION_HOURS
+        value: "12"
+      - key: MAX_LLM_CALLS_PER_HOUR
+        value: "500"
+
       # --- Gemini: either an API key, or a Vertex service account ---
       - key: GEMINI_API_KEY
         sync: false

@@ -21,3 +21,46 @@ ZONE_CHECK_CODES = {
     "Customer handover point": ["EVC-01", "EVG-01"],
     "Yard & perimeter": ["EVG-01", "EVC-01"],
 }
+
+
+# A photo can strengthen most issue reports, but requiring one for every issue
+# contradicts the assessment's explicit text/photo-description path and can be
+# counterproductive for record-based checks.  Keep the non-negotiable set
+# narrow and deterministic: these are immediate, visually inspectable hazards
+# where the consultant may leave the scene and the condition may disappear.
+PHOTO_REQUIRED_STANDARD_CODES = {
+    "OSHA-WALK-01",
+    "GA-FIRE-01",
+    "SAF-01",
+    "SAF-02",
+    "EVS-01",
+    "EVS-02",
+}
+
+
+def issue_photo_policy(standard_code: str, *, category: str = "",
+                       severity: str = "") -> dict:
+    """Return the server-owned evidence policy for a reported issue.
+
+    ``REQUIRED`` is a hard gate. ``RECOMMENDED`` is an explicit consultant
+    choice: attach a photo or continue to human review with lower confidence.
+    The model can explain the recommendation, but cannot silently make the
+    hard-gate decision itself.
+    """
+    if standard_code in PHOTO_REQUIRED_STANDARD_CODES:
+        return {
+            "level": "REQUIRED",
+            "label": "Photo required",
+            "reason": (
+                "This is an immediate, visually inspectable safety condition. "
+                "Capture it before leaving the area so the review packet can be checked."
+            ),
+        }
+    return {
+        "level": "RECOMMENDED",
+        "label": "AI recommends a photo",
+        "reason": (
+            "A photo would strengthen this report, but detailed consultant text "
+            "may continue to human review without one at lower confidence."
+        ),
+    }

@@ -12,12 +12,14 @@ from __future__ import annotations
 import json
 import re
 import time
+from datetime import datetime, timezone
 from typing import Type, TypeVar
 
 from pydantic import BaseModel
 
 from . import config
 from .budget import ModelBudgetExceeded, require_model_budget
+from .locks import model_workflow_lock
 from .models import ModelCall, SessionLocal, uid
 from .schemas import (ActionDraft, AnalysisResult, Challenge, ClarifySpec,
                       FindingDraft, ObservationDecision, ReviewTheme,
@@ -86,19 +88,21 @@ def _standards_from_trace(prompt: str) -> list[dict]:
     return out
 
 
-def _estimate_cost(model: str, tin: int, tout: int) -> float:
+def _estimate_cost(model: str, tin: int, tout: int, input_kind: str = "default") -> float:
     p = _PRICING.get(model, {"input_per_m": 0, "output_per_m": 0})
-    return round(tin / 1e6 * p["input_per_m"] + tout / 1e6 * p["output_per_m"], 6)
+    input_rate = p.get(f"{input_kind}_input_per_m", p["input_per_m"])
+    return round(tin / 1e6 * input_rate + tout / 1e6 * p["output_per_m"], 6)
 
 
 def _log_call(*, tenant_id: str, audit_id: str | None, purpose: str, provider: str,
               model: str, tin: int, tout: int, latency_ms: int, ok: bool,
-              retries: int = 0, cache_hit: bool = False) -> None:
+              retries: int = 0, cache_hit: bool = False,
+              input_kind: str = "default") -> None:
     db = SessionLocal()
     db.add(ModelCall(id=uid("call"), tenant_id=tenant_id, audit_id=audit_id,
                      purpose=purpose, provider=provider, model=model,
                      input_tokens=tin, output_tokens=tout, latency_ms=latency_ms,
-                     est_cost_usd=_estimate_cost(model, tin, tout),
+                     est_cost_usd=_estimate_cost(model, tin, tout, input_kind),
                      schema_retries=retries, ok=ok, cache_hit=cache_hit))
     db.commit()
     db.close()
@@ -306,6 +310,7 @@ class GeminiProvider:
                     tin=getattr(usage, "prompt_token_count", 0) or 0,
                     tout=getattr(usage, "candidates_token_count", 0) or 0,
                     latency_ms=latency, ok=True, retries=attempt,
+                    input_kind="audio" if media_kind == "AUDIO" else "default",
                 )
                 return parsed
             except Exception as exc:
@@ -669,6 +674,8 @@ class FixtureProvider:
 
 _provider = None
 _fallback_reason: str | None = None
+_fallback_by_audit: dict[str, str] = {}
+_last_live_success_at: str | None = None
 
 
 class ResilientProvider:
@@ -686,27 +693,33 @@ class ResilientProvider:
         return self._live.name
 
     def generate(self, **kwargs):
-        global _fallback_reason
+        global _fallback_reason, _last_live_success_at
         try:
             result = self._live.generate(**kwargs)
             _fallback_reason = None
+            _last_live_success_at = datetime.now(timezone.utc).isoformat()
             return result
         except ModelBudgetExceeded:
             raise
         except Exception as e:  # transport/auth/provider failure → labelled fallback
             _fallback_reason = f"{type(e).__name__}: {str(e)[:120]}"
+            if kwargs.get("audit_id"):
+                _fallback_by_audit[str(kwargs["audit_id"])] = _fallback_reason
             return self._fixture.generate(**kwargs)
 
     def investigate(self, **kwargs):
-        global _fallback_reason
+        global _fallback_reason, _last_live_success_at
         try:
             result = self._live.investigate(**kwargs)
             _fallback_reason = None
+            _last_live_success_at = datetime.now(timezone.utc).isoformat()
             return result
         except ModelBudgetExceeded:
             raise
         except Exception as e:
             _fallback_reason = f"{type(e).__name__}: {str(e)[:120]}"
+            if kwargs.get("audit_id"):
+                _fallback_by_audit[str(kwargs["audit_id"])] = _fallback_reason
             out = self._fixture.investigate(**kwargs)
             out["degraded"] = True
             out["degraded_reason"] = _fallback_reason
@@ -715,20 +728,54 @@ class ResilientProvider:
     def describe_image(self, **kwargs):
         # No fixture fallback: a fabricated description of a photo nobody looked
         # at is worse than an error. The caller surfaces the failure instead.
-        return self._live.describe_image(**kwargs)
+        global _fallback_reason, _last_live_success_at
+        result = self._live.describe_image(**kwargs)
+        _fallback_reason = None
+        _last_live_success_at = datetime.now(timezone.utc).isoformat()
+        return result
 
     def describe_media(self, **kwargs):
         # Media evidence has the same no-fabricated-fallback rule as photos.
-        return self._live.describe_media(**kwargs)
+        global _fallback_reason, _last_live_success_at
+        result = self._live.describe_media(**kwargs)
+        _fallback_reason = None
+        _last_live_success_at = datetime.now(timezone.utc).isoformat()
+        return result
+
+
+class SynchronizedProvider:
+    """Make budget preflight + provider invocation atomic in one worker."""
+    def __init__(self, provider) -> None:
+        self._provider = provider
+
+    @property
+    def name(self) -> str:
+        return self._provider.name
+
+    def generate(self, **kwargs):
+        with model_workflow_lock():
+            return self._provider.generate(**kwargs)
+
+    def investigate(self, **kwargs):
+        with model_workflow_lock():
+            return self._provider.investigate(**kwargs)
+
+    def describe_image(self, **kwargs):
+        with model_workflow_lock():
+            return self._provider.describe_image(**kwargs)
+
+    def describe_media(self, **kwargs):
+        with model_workflow_lock():
+            return self._provider.describe_media(**kwargs)
 
 
 def get_provider():
     global _provider
     if _provider is None:
         if config.LLM_PROVIDER == "gemini" and config.GEMINI_CONFIGURED:
-            _provider = ResilientProvider(GeminiProvider())
+            _provider = SynchronizedProvider(ResilientProvider(GeminiProvider()))
         else:
-            _provider = FixtureProvider()
+            _provider = SynchronizedProvider(FixtureProvider())
     return _provider
 
 
@@ -737,7 +784,11 @@ def provider_status() -> dict:
     if p.name == "gemini":
         route = "Vertex AI (service account)" if config.GEMINI_VERTEX_PROJECT else "Gemini API key"
         status = {"active_provider": p.name, "configured_provider": "gemini",
-                  "reason": f"live via {route}"}
+                  "reason": (f"live call confirmed via {route}" if _last_live_success_at
+                             else f"configured via {route}; no successful call confirmed yet"),
+                  "readiness": ("LIVE_CALL_CONFIRMED" if _last_live_success_at
+                                else "CONFIGURED_NOT_PROBED"),
+                  "last_live_success_at": _last_live_success_at}
         if _fallback_reason:
             status["active_provider"] = "fixture"
             status["degraded"] = True
@@ -745,5 +796,17 @@ def provider_status() -> dict:
         return status
     explicit = config.LLM_PROVIDER != "gemini"
     return {"active_provider": p.name, "configured_provider": config.LLM_PROVIDER,
+            "readiness": "FIXTURE_ACTIVE", "last_live_success_at": None,
             "reason": ("Deterministic fixture engine explicitly selected (labelled)" if explicit
                        else "Gemini not configured — deterministic fixture engine active (labelled)")}
+
+
+def clear_provider_execution(audit_id: str) -> None:
+    _fallback_by_audit.pop(audit_id, None)
+
+
+def provider_execution(audit_id: str) -> dict:
+    reason = _fallback_by_audit.get(audit_id)
+    if reason:
+        return {"provider": "fixture", "degraded": True, "reason": reason}
+    return {"provider": get_provider().name, "degraded": False, "reason": None}

@@ -1,6 +1,8 @@
 """Auditable, human-controlled per-visit model-call budget."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import func
 
 from . import config
@@ -39,10 +41,20 @@ def audit_budget(db, audit_id: str) -> dict:
 
 
 def require_model_budget(audit_id: str | None) -> None:
-    if audit_id is None:
-        return
     from .models import SessionLocal
     db = SessionLocal()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    hourly_used = int(db.query(func.count(ModelCall.id)).filter(
+        ModelCall.created_at >= cutoff).scalar() or 0)
+    if hourly_used >= config.MAX_LLM_CALLS_PER_HOUR:
+        db.close()
+        raise ModelBudgetExceeded(
+            f"service-wide hourly analysis budget reached ({hourly_used}/"
+            f"{config.MAX_LLM_CALLS_PER_HOUR} model calls); try again later"
+        )
+    if audit_id is None:
+        db.close()
+        return
     budget = audit_budget(db, audit_id)
     db.close()
     if budget["remaining_calls"] <= 0:

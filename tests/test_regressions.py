@@ -11,6 +11,7 @@ import json
 from io import BytesIO
 from pathlib import Path
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 
@@ -30,8 +31,9 @@ from PIL import Image  # noqa: E402
 
 from server.app import app  # noqa: E402
 from server.agent import challenge  # noqa: E402
-from server.models import (Finding, ModelCall, Observation, OperationalTicket,
-                           SessionLocal, Standard, engine, uid)  # noqa: E402
+from server.models import (AuditSession, ClarificationQuestion, Finding, ModelCall, Observation,
+                           OperationalTicket, SessionLocal, Standard, engine,
+                           uid)  # noqa: E402
 from server.agent.orchestrator import _scope_representative_standard  # noqa: E402
 from server.gateway import GeminiProvider  # noqa: E402
 from server.schemas import (ActionDraft, AnalysisResult, FindingDraft,
@@ -44,6 +46,12 @@ class TrustBoundaryTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.client_context = TestClient(app)
         cls.client = cls.client_context.__enter__()
+        signed_in = cls.client.post("/api/auth/login", json={
+            "username": "demo-user",
+            "password": "Broadpeak-demo-user",
+        })
+        if signed_in.status_code != 200:
+            raise RuntimeError(f"test login failed: {signed_in.text}")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -63,6 +71,172 @@ class TrustBoundaryTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()["id"]
+
+    def authenticated_client(self) -> TestClient:
+        client = TestClient(app)
+        signed_in = client.post("/api/auth/login", json={
+            "username": "demo-user", "password": "Broadpeak-demo-user",
+        })
+        self.assertEqual(signed_in.status_code, 200, signed_in.text)
+        return client
+
+    def test_shared_demo_login_protects_api_and_sets_browser_headers(self) -> None:
+        with TestClient(app) as anonymous:
+            denied = anonymous.get("/api/tenants")
+            self.assertEqual(denied.status_code, 401, denied.text)
+            self.assertEqual(denied.headers["x-frame-options"], "DENY")
+            self.assertIn("frame-ancestors 'none'", denied.headers["content-security-policy"])
+            self.assertEqual(denied.headers["cache-control"], "no-store")
+            health = anonymous.get("/api/health")
+            self.assertEqual(health.status_code, 200, health.text)
+            wrong = anonymous.post("/api/auth/login", json={
+                "username": "demo-user", "password": "wrong",
+            })
+            self.assertEqual(wrong.status_code, 401, wrong.text)
+            signed_in = anonymous.post("/api/auth/login", json={
+                "username": "demo-user", "password": "Broadpeak-demo-user",
+            })
+            self.assertEqual(signed_in.status_code, 200, signed_in.text)
+            self.assertIn("HttpOnly", signed_in.headers["set-cookie"])
+            self.assertIn("SameSite=strict", signed_in.headers["set-cookie"])
+            self.assertEqual(anonymous.get("/api/tenants").status_code, 200)
+
+    def test_photo_for_one_check_cannot_support_another_check_in_same_zone(self) -> None:
+        audit_id = self.new_audit()
+        guide = self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()
+        arrival = next(zone for zone in guide["zones"]
+                       if zone["name"] == "Arrival & entrance signage")
+        photo_id = self.upload_photo(
+            audit_id, zone_id=arrival["id"], standard_code="SIG-01")
+        mismatched = self.client.post(f"/api/audits/{audit_id}/checklist", json={
+            "responses": [{
+                "item": "Walkway check", "standard_code": "OSHA-WALK-01",
+                "response": "FAIL", "detail": "Trip hazard at the entrance curb",
+                "zone_id": arrival["id"],
+                "evidence_observation_ids": [photo_id],
+            }],
+        })
+        self.assertEqual(mismatched.status_code, 422, mismatched.text)
+        self.assertIn("this exact issue", mismatched.text)
+
+    def test_concurrent_checklist_saves_do_not_lose_a_zone(self) -> None:
+        audit_id = self.new_audit()
+        guide = self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()
+        selected = []
+        for zone in guide["zones"]:
+            ordinary = next((check for check in zone["checks"]
+                             if not check.get("authority_type")), None)
+            if ordinary:
+                selected.append((zone, ordinary))
+            if len(selected) == 2:
+                break
+        clients = [self.authenticated_client(), self.authenticated_client()]
+        try:
+            def save(index: int):
+                zone, check = selected[index]
+                return clients[index].post(f"/api/audits/{audit_id}/checklist", json={
+                    "responses": [{
+                        "item": check["question"],
+                        "standard_code": check["standard_code"],
+                        "response": "PASS", "detail": "", "zone_id": zone["id"],
+                        "evidence_observation_ids": [],
+                    }],
+                })
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                responses = list(pool.map(save, range(2)))
+            self.assertTrue(all(row.status_code == 200 for row in responses),
+                            [row.text for row in responses])
+        finally:
+            for client in clients:
+                client.close()
+        saved = self.client.get(f"/api/audits/{audit_id}").json()["checklist_responses"]
+        keys = {(row["zone_id"], row["standard_code"]) for row in saved}
+        self.assertTrue(all((zone["id"], check["standard_code"]) in keys
+                            for zone, check in selected), saved)
+
+    def test_concurrent_analysis_is_idempotent_and_budget_atomic(self) -> None:
+        audit_id = self.new_audit()
+        observed = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE", "text": "The entrance looked a little unusual.",
+        })
+        self.assertEqual(observed.status_code, 200, observed.text)
+        clients = [self.authenticated_client() for _ in range(6)]
+        try:
+            with patch("server.config.MAX_LLM_CALLS_PER_AUDIT", 1):
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    responses = list(pool.map(
+                        lambda client: client.post(f"/api/audits/{audit_id}/analyze"),
+                        clients,
+                    ))
+            self.assertTrue(all(row.status_code == 429 for row in responses),
+                            [(row.status_code, row.text) for row in responses])
+        finally:
+            for client in clients:
+                client.close()
+        db = SessionLocal()
+        calls = db.query(ModelCall).filter_by(audit_id=audit_id).count()
+        db.close()
+        self.assertEqual(calls, 1)
+
+        second_audit = self.new_audit()
+        observed = self.client.post(f"/api/audits/{second_audit}/observations", json={
+            "kind": "NOTE", "text": "The entrance looked a little unusual.",
+        })
+        self.assertEqual(observed.status_code, 200, observed.text)
+        clients = [self.authenticated_client() for _ in range(4)]
+        try:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                responses = list(pool.map(
+                    lambda client: client.post(f"/api/audits/{second_audit}/analyze"),
+                    clients,
+                ))
+            self.assertTrue(all(row.status_code == 200 for row in responses),
+                            [(row.status_code, row.text) for row in responses])
+        finally:
+            for client in clients:
+                client.close()
+        db = SessionLocal()
+        calls = db.query(ModelCall).filter_by(audit_id=second_audit).count()
+        open_questions = db.query(ClarificationQuestion).filter_by(
+            audit_id=second_audit, status="OPEN").count()
+        db.close()
+        self.assertEqual(calls, 2)
+        self.assertEqual(open_questions, 1)
+
+    def test_ticket_photo_metadata_is_removed_before_storage(self) -> None:
+        ticket_id = uid("ticket")
+        db = SessionLocal()
+        db.add(OperationalTicket(
+            id=ticket_id, tenant_id="broadpeak-demo",
+            location_id="wolf-creek-atlanta", dedupe_key=uid("dedupe"),
+            source_kind="TEST", source_refs=[], category="safety",
+            title="Metadata stripping test", description="Test evidence",
+            priority="LOW", assigned_role="Location Manager",
+            status="PENDING_VALIDATION", validity_status="UNASSESSED",
+            due_date="2026-08-17", before_evidence=[], after_evidence=[],
+            external_reply={}, events=[],
+        ))
+        db.commit()
+        db.close()
+        image = Image.new("RGB", (32, 32), "green")
+        exif = Image.Exif()
+        exif[270] = "PRIVATE LOCATION NOTE"
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG", exif=exif)
+        uploaded = self.client.post(
+            f"/api/tickets/{ticket_id}/evidence",
+            data={"stage": "BEFORE", "note": "Entrance before image",
+                  "actor": "Location Operator"},
+            files={"file": ("before.jpg", buffer.getvalue(), "image/jpeg")},
+        )
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        digest = uploaded.json()["evidence"]["digest"]
+        stored = self.client.get(f"/api/photos/{digest}")
+        self.assertEqual(stored.status_code, 200, stored.text)
+        with Image.open(BytesIO(stored.content)) as canonical:
+            self.assertEqual(dict(canonical.getexif()), {})
 
     def upload_photo(self, audit_id: str, *, observation_id: str | None = None,
                      zone_id: str | None = None,
@@ -95,7 +269,11 @@ class TrustBoundaryTests(unittest.TestCase):
         observation_id = observed.json()["id"]
         requested = self.client.post(f"/api/audits/{audit_id}/analyze")
         self.assertEqual(requested.status_code, 200, requested.text)
-        self.assertTrue(requested.json().get("evidence_requests"), requested.text)
+        self.assertTrue(
+            requested.json().get("evidence_requests")
+            or requested.json().get("evidence_recommendations"),
+            requested.text,
+        )
         self.upload_photo(audit_id, observation_id=observation_id)
         deferred = {"ran": False, "reason": "test defers panel to review",
                     "challenges": [], "outcome": "DEFERRED_TO_REVIEW"}
@@ -248,7 +426,7 @@ class TrustBoundaryTests(unittest.TestCase):
         audit = self.client.get(f"/api/audits/{audit_id}").json()
         open_questions = [q for q in audit["questions"] if q["status"] == "OPEN"]
         self.assertEqual(len(open_questions), 1, audit)
-        self.assertEqual(open_questions[0]["response_type"], "PHOTO")
+        self.assertEqual(open_questions[0]["response_type"], "PHOTO_RECOMMENDED")
         self.assertEqual(len([q for q in audit["questions"]
                               if q["response_type"] == "TEXT"]), 1)
 
@@ -417,7 +595,8 @@ class TrustBoundaryTests(unittest.TestCase):
         audit_id = self.new_audit()
         observed = self.client.post(f"/api/audits/{audit_id}/observations", json={
             "kind": "NOTE",
-            "text": "Men's restroom waste bin is overflowing beside the second sink.",
+            "zone_id": "z1_00",
+            "text": "A loose electrical cable is stretched across the entrance walkway as a trip hazard.",
         })
         observation_id = observed.json()["id"]
         requested = self.client.post(f"/api/audits/{audit_id}/analyze")
@@ -509,16 +688,143 @@ class TrustBoundaryTests(unittest.TestCase):
 
     def test_checklist_issue_requires_an_explicit_photo(self) -> None:
         audit_id = self.new_audit()
-        restroom = next(zone for zone in self.client.get(
+        arrival = next(zone for zone in self.client.get(
             "/api/locations/wolf-creek-atlanta/field-guide").json()["zones"]
-            if zone["name"] == "Restrooms")
+            if zone["name"] == "Arrival & entrance signage")
         response = self.client.post(f"/api/audits/{audit_id}/checklist", json={
-            "responses": [{"item": "Restroom condition", "standard_code": "CLN-01",
-                           "response": "FAIL", "detail": "Standing water at sink",
-                           "zone_id": restroom["id"], "evidence_observation_ids": []}],
+            "responses": [{"item": "Walking surface", "standard_code": "OSHA-WALK-01",
+                           "response": "FAIL", "detail": "Cable across entrance walkway",
+                           "zone_id": arrival["id"], "evidence_observation_ids": []}],
         })
         self.assertEqual(response.status_code, 422, response.text)
         self.assertIn("linked photo", response.text)
+
+    def test_checklist_recommended_photo_can_be_explicitly_skipped(self) -> None:
+        audit_id = self.new_audit()
+        restroom = next(zone for zone in self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()["zones"]
+            if zone["name"] == "Restrooms")
+        payload = {
+            "responses": [{
+                "item": "Restroom condition",
+                "standard_code": "CLN-01",
+                "response": "FAIL",
+                "detail": "Standing water at the second sink at 2:05pm",
+                "zone_id": restroom["id"],
+                "evidence_observation_ids": [],
+            }],
+        }
+        undecided = self.client.post(f"/api/audits/{audit_id}/checklist", json=payload)
+        self.assertEqual(undecided.status_code, 422, undecided.text)
+        self.assertIn("explicitly continue", undecided.text)
+
+        payload["responses"][0]["photo_decision"] = "CONTINUE_WITHOUT_PHOTO"
+        saved = self.client.post(f"/api/audits/{audit_id}/checklist", json=payload)
+        self.assertEqual(saved.status_code, 200, saved.text)
+        row = next(
+            item for item in self.client.get(f"/api/audits/{audit_id}").json()[
+                "checklist_responses"]
+            if item["standard_code"] == "CLN-01"
+        )
+        self.assertEqual(row["photo_policy"]["level"], "RECOMMENDED")
+        self.assertEqual(row["photo_decision"], "CONTINUE_WITHOUT_PHOTO")
+        self.assertEqual(
+            row["verification_state"], "CONSULTANT_REPORTED_PHOTO_RECOMMENDED")
+
+    def test_text_finding_can_continue_without_recommended_photo(self) -> None:
+        audit_id = self.new_audit()
+        observed = self.client.post(f"/api/audits/{audit_id}/observations", json={
+            "kind": "NOTE",
+            "text": ("Men's clubhouse restroom waste bin overflowing with standing "
+                     "water around the second sink at 2:05pm."),
+        })
+        self.assertEqual(observed.status_code, 200, observed.text)
+        requested = self.client.post(f"/api/audits/{audit_id}/analyze")
+        self.assertEqual(requested.status_code, 200, requested.text)
+        question = next(
+            row for row in self.client.get(f"/api/audits/{audit_id}").json()["questions"]
+            if row["observation_id"] == observed.json()["id"]
+            and row["response_type"] == "PHOTO_RECOMMENDED"
+        )
+        continued = self.client.post(f"/api/questions/{question['id']}/answer", json={
+            "answer": "Continue without photo",
+        })
+        self.assertEqual(continued.status_code, 200, continued.text)
+        state = self.client.get(f"/api/audits/{audit_id}").json()
+        self.assertEqual(len(state["findings"]), 1, state)
+        self.assertEqual(state["field_tickets"], [], state)
+        self.assertLessEqual(state["findings"][0]["confidence"], 0.70)
+        self.assertTrue(any(
+            "lower evidence confidence" in reason.lower()
+            for reason in state["findings"][0]["uncertainty_reasons"]
+        ), state["findings"][0])
+
+    def test_partial_zone_save_does_not_revalidate_legacy_wrong_zone_row(self) -> None:
+        audit_id = self.new_audit()
+        arrival = next(zone for zone in self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()["zones"]
+            if zone["name"] == "Arrival & entrance signage")
+        db = SessionLocal()
+        try:
+            audit = db.get(AuditSession, audit_id)
+            audit.checklist_responses = [{
+                "item": "Legacy safety row",
+                "standard_code": "SAF-01",
+                "response": "PASS",
+                "detail": "Persisted by an older build",
+                "zone_id": arrival["id"],
+            }]
+            db.commit()
+        finally:
+            db.close()
+
+        saved = self.client.post(f"/api/audits/{audit_id}/checklist", json={
+            "responses": [{
+                "item": "Entrance signage",
+                "standard_code": "SIG-01",
+                "response": "PASS",
+                "detail": "Current entrance sign is present and legible",
+                "zone_id": arrival["id"],
+            }],
+        })
+        self.assertEqual(saved.status_code, 200, saved.text)
+        rows = self.client.get(f"/api/audits/{audit_id}").json()["checklist_responses"]
+        self.assertEqual({row["standard_code"] for row in rows}, {"SAF-01", "SIG-01"})
+
+    def test_recent_visits_can_discard_drafts_but_not_submitted_packets(self) -> None:
+        draft_id = self.new_audit()
+        recent = self.client.get(
+            "/api/audits?tenant_id=broadpeak-demo&location_id=wolf-creek-atlanta")
+        self.assertEqual(recent.status_code, 200, recent.text)
+        listed = next(row for row in recent.json() if row["id"] == draft_id)
+        self.assertTrue(listed["can_discard"])
+
+        mismatch = self.client.request("DELETE", f"/api/audits/{draft_id}", json={
+            "confirm_audit_id": "a-different-visit",
+            "requested_by": "Regression Tester",
+        })
+        self.assertEqual(mismatch.status_code, 422, mismatch.text)
+        discarded = self.client.request("DELETE", f"/api/audits/{draft_id}", json={
+            "confirm_audit_id": draft_id,
+            "requested_by": "Regression Tester",
+        })
+        self.assertEqual(discarded.status_code, 200, discarded.text)
+        self.assertEqual(discarded.json()["discarded"], draft_id)
+        self.assertEqual(self.client.get(f"/api/audits/{draft_id}").status_code, 404)
+
+        submitted_id = self.new_audit()
+        db = SessionLocal()
+        try:
+            submitted = db.get(AuditSession, submitted_id)
+            submitted.status = "SUBMITTED"
+            db.commit()
+        finally:
+            db.close()
+        immutable = self.client.request("DELETE", f"/api/audits/{submitted_id}", json={
+            "confirm_audit_id": submitted_id,
+            "requested_by": "Regression Tester",
+        })
+        self.assertEqual(immutable.status_code, 409, immutable.text)
 
     def test_checklist_cannot_silently_overwrite_an_existing_review_packet(self) -> None:
         audit_id = self.new_audit()
@@ -749,7 +1055,8 @@ class TrustBoundaryTests(unittest.TestCase):
         with patch("server.app.get_provider", return_value=ImageProvider()):
             photo = self.client.post(
                 f"/api/audits/{audit_id}/photo",
-                data={"zone_id": restroom["id"], "privacy_attested": "true"},
+                data={"zone_id": restroom["id"], "privacy_attested": "true",
+                      "evidence_for_standard_code": "CLN-01"},
                 files={"file": ("sink.png", buffer.getvalue(), "image/png")},
             )
         self.assertEqual(photo.status_code, 200, photo.text)
@@ -820,6 +1127,52 @@ class TrustBoundaryTests(unittest.TestCase):
         self.assertEqual(self.client.get(f"/api/audits/{audit_id}").json()[
             "observations"], [])
 
+    def test_general_photo_and_audio_must_match_the_selected_zone(self) -> None:
+        class MismatchProvider:
+            def describe_image(self, **_kwargs):
+                return PhotoDescription(
+                    description="A cafeteria menu on a screen.",
+                    usable_as_evidence=True,
+                    matches_requested_context=False,
+                    mismatch_reason="The image clearly does not show the selected arrival zone.",
+                )
+
+            def describe_media(self, **_kwargs):
+                return MediaDescription(
+                    transcript="A conversation about an unrelated cafeteria order.",
+                    description="Unrelated conversation.",
+                    usable_as_evidence=True,
+                    matches_requested_context=False,
+                    mismatch_reason="The audio is unrelated to the selected arrival zone.",
+                )
+
+        audit_id = self.new_audit()
+        arrival = next(zone for zone in self.client.get(
+            "/api/locations/wolf-creek-atlanta/field-guide").json()["zones"]
+            if zone["name"] == "Arrival & entrance signage")
+        image = BytesIO()
+        Image.new("RGB", (24, 24), "white").save(image, format="PNG")
+        wav = (b"RIFF" + (36).to_bytes(4, "little") + b"WAVEfmt " +
+               b"\x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00" +
+               b"\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00")
+        with patch("server.app.get_provider", return_value=MismatchProvider()):
+            photo = self.client.post(
+                f"/api/audits/{audit_id}/photo",
+                data={"zone_id": arrival["id"]},
+                files={"file": ("wrong-zone.png", image.getvalue(), "image/png")},
+            )
+            audio = self.client.post(
+                f"/api/audits/{audit_id}/media",
+                data={"zone_id": arrival["id"], "media_kind": "AUDIO"},
+                files={"file": ("wrong-zone.wav", wav, "audio/wav")},
+            )
+        self.assertEqual(photo.status_code, 200, photo.text)
+        self.assertFalse(photo.json()["accepted"])
+        self.assertEqual(audio.status_code, 200, audio.text)
+        self.assertFalse(audio.json()["accepted"])
+        self.assertEqual(self.client.get(f"/api/audits/{audit_id}").json()[
+            "observations"], [])
+
     def test_model_cannot_rewrite_consultant_statement(self) -> None:
         class ParaphrasingProvider:
             def investigate(self, **kwargs):
@@ -865,7 +1218,11 @@ class TrustBoundaryTests(unittest.TestCase):
                        "server.agent.orchestrator.challenge.run_panel",
                        return_value=no_panel):
             requested = self.client.post(f"/api/audits/{audit_id}/analyze")
-        self.assertTrue(requested.json().get("evidence_requests"), requested.text)
+        self.assertTrue(
+            requested.json().get("evidence_requests")
+            or requested.json().get("evidence_recommendations"),
+            requested.text,
+        )
         self.upload_photo(audit_id, observation_id=observation_id)
         with patch("server.agent.orchestrator.get_provider",
                    return_value=ParaphrasingProvider()), patch(
@@ -1002,7 +1359,7 @@ class TrustBoundaryTests(unittest.TestCase):
         with patch("server.app.get_provider", return_value=MediaProvider()):
             uploaded = self.client.post(
                 f"/api/audits/{audit_id}/media",
-                data={"media_kind": "AUDIO", "standard_code": "CLN-01"},
+                data={"media_kind": "AUDIO"},
                 files={"file": ("note.wav", wav, "audio/wav")},
             )
         self.assertEqual(uploaded.status_code, 200, uploaded.text)

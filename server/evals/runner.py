@@ -152,7 +152,9 @@ def _attach_requested_evidence(client, audit_id: str, state: dict) -> dict:
     """
     photo_questions = {
         q["observation_id"]: q for q in state.get("questions", [])
-        if q.get("status") == "OPEN" and q.get("response_type") == "PHOTO"
+        if q.get("status") == "OPEN" and q.get("response_type") in {
+            "PHOTO", "PHOTO_RECOMMENDED"
+        }
         and q.get("observation_id")
     }
     if not photo_questions:
@@ -194,8 +196,10 @@ def _observe_to_finding(client, audit_id: str, text: str, kind: str = "NOTE") ->
 
 def judge(assertion: str, output: dict) -> tuple[bool | None, str]:
     """Grade a semantic assertion with the LLM judge. Fails closed on error."""
-    from ..gateway import get_provider
+    from ..gateway import get_provider, provider_status
     from ..schemas import JudgeVerdict
+    if provider_status().get("active_provider") == "fixture":
+        return None, "judge unavailable in fixture mode — not counted as a pass"
     doc = (config.PROMPTS_DIR / "eval_judge.md").read_text()
     prompt = (f"{doc}\n\nASSERTION:\n{assertion}\n\n"
               f"OUTPUT:\n{json.dumps(output, indent=2)[:14000]}\n\n"
@@ -502,6 +506,15 @@ def run(repeats: int = 3, case_ids: set[str] | None = None,
     with httpx.Client(timeout=600) as client:
         system_under_test = _validate_system_under_test(
             client, API, expected_provider, expected_build)
+        login = client.post(f"{API}/auth/login", json={
+            "username": os.getenv("EVAL_DEMO_USERNAME", config.DEMO_USERNAME),
+            "password": os.getenv("EVAL_DEMO_PASSWORD", config.DEMO_PASSWORD),
+        })
+        if login.status_code != 200:
+            raise EvaluationTargetError(
+                "evaluation could not authenticate to the system under test; "
+                "set EVAL_DEMO_USERNAME and EVAL_DEMO_PASSWORD"
+            )
         selected_cases = [case for case in CASES if not case_ids or case[0] in case_ids]
         for cid, name, fn in selected_cases:
             runs = []
@@ -593,9 +606,9 @@ if __name__ == "__main__":
     except EvaluationTargetError as exc:
         print(f"EVALUATION TARGET ERROR: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
-    print(f"\n{r['passed']}/{r['total']} cases passed every run "
-          f"({args.repeats} repeats each) | flaky: {r['flaky']} | "
-          f"mean pass rate: {r['mean_pass_rate']}")
+    print(f"\n{r['passed']}/{r['total']} executable cases passed every run "
+          f"({args.repeats} repeats each) | intentionally skipped: {r['skipped']} | "
+          f"flaky: {r['flaky']} | mean pass rate: {r['mean_pass_rate']}")
     sut = r["system_under_test"]
     print(f"system under test: {sut['api_url']}")
     print(f"SUT provider: {sut['active_provider']} — "

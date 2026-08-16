@@ -18,10 +18,14 @@ signals sit beside the audit as context that can never masquerade as proof.
 
 ```bash
 pip install -r requirements.txt
-cd web && npm install && npm run build && cd ..
+cd web && npm ci && npm run build && cd ..
 uvicorn server.app:app --port 8000
 # open http://127.0.0.1:8000
 ```
+
+Local demo sign-in: username `demo-user`, password `Broadpeak-demo-user`.
+For any public deployment, set a different `DEMO_PASSWORD` and a random
+`SESSION_SECRET` of at least 32 characters in the host secret manager.
 
 Without keys the app still runs end-to-end: a labelled deterministic policy
 engine stands in for Gemini, while Wolf Creek customer intelligence uses a
@@ -42,7 +46,10 @@ pip install google-genai
   location is resolved once to a stable Place ID and fields use explicit masks.
   Places only returns a small Google-selected sample, so the assessment snapshot
   remains the coverage-fit source for Wolf Creek analysis.
-- Provider failure degrades to the cached/fixture twin — the demo cannot break.
+- Text-analysis provider failure degrades to a labelled deterministic fixture
+  result. Vision/audio/video never receive a fabricated fallback: an unavailable
+  multimodal provider produces a visible retryable error and stores no asserted
+  description.
 
 ## The demo in five moments
 
@@ -79,9 +86,12 @@ pip install google-genai
 Free-form reports and the area guide converge on one record instead of creating
 parallel, contradictory work. Clarification uses the complete ordered answer
 history, allows only one open question per observation, and stops after two text
-turns. A reported issue then requires an explicitly linked photo. The photo is
-stored as evidence but labelled `PHOTO_ATTACHED_PENDING_REVIEW`; attachment is
-not treated as proof. Once a grounded candidate exists, the matching guide item
+turns. The field guide applies a visible evidence policy per issue: visually
+verifiable/high-risk checks require an explicitly targeted photo, while other
+issues get an AI photo recommendation and may continue with detailed text at
+lower confidence. A photo is semantically checked against its requested issue,
+stored without EXIF metadata, and labelled `PHOTO_ATTACHED_PENDING_REVIEW`;
+attachment is not treated as proof. Once a grounded candidate exists, the matching guide item
 is reconciled as reviewer-required and an idempotent ticket is created with an
 ID, demo assignee, due date and `PENDING_VALIDATION` status. If no controlled
 standard fits, the report is preserved and routed as an operational concern
@@ -117,8 +127,8 @@ Four gates stand between the model and a reviewer:
 
 ## Architecture
 
-Modular monolith: FastAPI + SQLAlchemy (SQLite for the POC, `DATABASE_URL`
-switches to Postgres) + a React/Vite front end served statically. One model
+Modular monolith: FastAPI + SQLAlchemy (single-worker SQLite for the POC) + a
+React/Vite front end served statically. One model
 gateway interface with two providers (Gemini, fixture). One narrow, typed tool
 surface — **every tool is read-only**; the LLM never gets a browser, a shell, or
 the ability to mutate state. All mutation happens in deterministic Python after a
@@ -174,10 +184,13 @@ access, not indefinite scraping.
 docker build -t fieldintel . && docker run -p 8000:8000 fieldintel
 ```
 
-`render.yaml` is a Render blueprint. Every secret is `sync: false` — set once in
-the host's secret manager, never in the repo. **The app runs with no secrets at
-all**, falling back to the labelled fixture engine, so a secrets-free deploy is a
-legitimate deploy rather than a broken one.
+`render.yaml` is a Render blueprint. Set `DEMO_PASSWORD` and `SESSION_SECRET`
+when Render prompts; production startup deliberately fails if either is absent.
+Gemini and Maps credentials remain optional: without them, text analysis uses the
+labelled fixture engine. The included free-tier blueprint uses one worker and an
+ephemeral SQLite/uploads directory, so assessment data survives normal use but
+resets on redeploy/restart. Persistent production use requires a Render disk or,
+preferably, Postgres plus object storage and migrations.
 
 ## Evals
 
@@ -246,9 +259,12 @@ recurrence detection, and re-analysis idempotency.
   is saved before analysis, so the cost pause never discards a capture.
 - The fixture LLM engine is deliberately conservative keyword policy, not
   intelligence — it exists so the demo and evals run keyless and deterministic.
-- No auth (the role selector is explicitly a demo persona) and single-process
-  SQLite. Live Gemini is required for photo, audio and video understanding;
+- A signed, rate-limited, HttpOnly-cookie shared demo login protects the public
+  assessment. The role selector is still a preview persona, not real user-level
+  RBAC or separation of duty. The deployment remains single-process SQLite.
+  Live Gemini is required for photo, audio and video understanding;
   fixture mode refuses to fabricate media interpretations. Operational
-  before/after image uploads are real files with content validation. Production
-  still needs SSO/RBAC, object storage, malware scanning and retention policy.
+  before/after image uploads are real files with content validation and metadata
+  removal. Production still needs SSO/RBAC, object storage, malware scanning,
+  database-backed rate/cost reservations and a retention policy.
 - See `docs/adr/` for what changes on the way to production.

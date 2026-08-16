@@ -111,6 +111,8 @@ class PhotoDescription(BaseModel):
     image_quality_issues: list[str] = Field(default_factory=list)
     usable_as_evidence: bool = True
     unusable_reason: str = ""
+    matches_requested_context: bool = True
+    mismatch_reason: str = ""
 
 
 class MediaDescription(BaseModel):
@@ -130,6 +132,8 @@ class MediaDescription(BaseModel):
     quality_issues: list[str] = Field(default_factory=list, max_length=100)
     usable_as_evidence: bool = True
     unusable_reason: str = ""
+    matches_requested_context: bool = True
+    mismatch_reason: str = ""
 
 
 # ---------- review themes ----------

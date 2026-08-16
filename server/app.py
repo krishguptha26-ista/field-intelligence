@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 import hashlib
+import base64
+import hmac
 import json
 import re
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Literal
+from threading import Lock
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,7 +32,8 @@ from .connectors.benchmark import competitor_benchmark
 from .connectors.places import summarise_themes
 from .connectors.review_snapshot import load_review_snapshot
 from .gateway import get_provider, provider_status
-from .field_guide import ZONE_CHECK_CODES
+from .locks import audit_lock
+from .field_guide import ZONE_CHECK_CODES, issue_photo_policy
 from .models import (Action, AuditLog, AuditSession, ClarificationQuestion,
                      EvidenceItem, Finding, Location, ModelCall, Observation,
                      OperationalTicket, TaxonomyProposal,
@@ -39,6 +45,77 @@ app = FastAPI(title="Field Intelligence", version=config.APP_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
                    allow_methods=["*"], allow_headers=["*"])
 _BUILD_FINGERPRINT = source_fingerprint()
+
+SESSION_COOKIE = "fieldintel_session"
+_PUBLIC_API_PATHS = {"/api/health", "/api/auth/login", "/api/auth/session"}
+_LOGIN_ATTEMPTS: defaultdict[str, deque[float]] = defaultdict(deque)
+_LOGIN_ATTEMPTS_LOCK = Lock()
+_LOGIN_WINDOW_SECONDS = 300
+_LOGIN_MAX_ATTEMPTS = 10
+
+
+def _session_token(username: str) -> str:
+    expires = int(time.time()) + config.SESSION_HOURS * 3600
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"sub": username, "exp": expires}, separators=(",", ":")).encode()
+    ).decode().rstrip("=")
+    signature = hmac.new(
+        config.SESSION_SECRET.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
+    return f"{payload}.{signature}"
+
+
+def _session_user(token: str | None) -> str | None:
+    if not token or "." not in token or not config.SESSION_SECRET:
+        return None
+    payload, signature = token.rsplit(".", 1)
+    expected = hmac.new(
+        config.SESSION_SECRET.encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return None
+    try:
+        padded = payload + "=" * (-len(payload) % 4)
+        data = json.loads(base64.urlsafe_b64decode(padded).decode())
+        if int(data.get("exp") or 0) <= int(time.time()):
+            return None
+        username = str(data.get("sub") or "").strip()
+        return username if username == config.DEMO_USERNAME else None
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+@app.middleware("http")
+async def require_demo_session(request: Request, call_next):
+    if (not request.url.path.startswith("/api/")
+            or request.method == "OPTIONS"
+            or request.url.path in _PUBLIC_API_PATHS):
+        return await call_next(request)
+    user = _session_user(request.cookies.get(SESSION_COOKIE))
+    if user is None:
+        return JSONResponse(status_code=401, content={"detail": "sign in required"})
+    request.state.user = user
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+        "form-action 'self'; object-src 'none'; img-src 'self' data: blob:; "
+        "media-src 'self' blob:; connect-src 'self'; "
+        "script-src 'self'; style-src 'self' 'unsafe-inline'"
+    )
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    if config.APP_ENV == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 _WORKFLOW_ROLE_CAPABILITIES = [
@@ -102,6 +179,7 @@ def _model_budget_handler(_request, exc: ModelBudgetExceeded):
 
 @app.on_event("startup")
 def _startup() -> None:
+    config.validate_runtime()
     init_db()
     seed()
 
@@ -112,6 +190,64 @@ def _startup() -> None:
 def health() -> dict:
     return {"ok": True, "build_fingerprint": _BUILD_FINGERPRINT,
             **config.key_status(), **provider_status()}
+
+
+class LoginBody(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=500)
+
+
+@app.get("/api/auth/session")
+def auth_session(request: Request) -> dict:
+    user = _session_user(request.cookies.get(SESSION_COOKIE))
+    if user is None:
+        raise HTTPException(401, "sign in required")
+    return {"authenticated": True, "username": user,
+            "expires_in_hours": config.SESSION_HOURS}
+
+
+@app.post("/api/auth/login")
+def auth_login(body: LoginBody):
+    client_key = "unknown"
+    # Rate limiting is deliberately local to the single Render worker used by
+    # this assessment. A scaled deployment must move it to a shared store.
+    # The username is included so unrelated users behind one NAT do not share
+    # the same bucket.
+    client_key = body.username.strip().casefold()
+    now = time.monotonic()
+    with _LOGIN_ATTEMPTS_LOCK:
+        attempts = _LOGIN_ATTEMPTS[client_key]
+        while attempts and now - attempts[0] > _LOGIN_WINDOW_SECONDS:
+            attempts.popleft()
+        if len(attempts) >= _LOGIN_MAX_ATTEMPTS:
+            raise HTTPException(429, "too many sign-in attempts; try again in a few minutes")
+        attempts.append(now)
+    valid_user = hmac.compare_digest(body.username.strip(), config.DEMO_USERNAME)
+    valid_password = bool(config.DEMO_PASSWORD) and hmac.compare_digest(
+        body.password, config.DEMO_PASSWORD)
+    if not (valid_user and valid_password):
+        raise HTTPException(401, "invalid username or password")
+    with _LOGIN_ATTEMPTS_LOCK:
+        _LOGIN_ATTEMPTS.pop(client_key, None)
+    response = JSONResponse({"authenticated": True,
+                             "username": config.DEMO_USERNAME})
+    response.set_cookie(
+        SESSION_COOKIE,
+        _session_token(config.DEMO_USERNAME),
+        max_age=config.SESSION_HOURS * 3600,
+        httponly=True,
+        secure=config.APP_ENV == "production",
+        samesite="strict",
+        path="/",
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def auth_logout():
+    response = JSONResponse({"authenticated": False})
+    response.delete_cookie(SESSION_COOKIE, path="/", samesite="strict")
+    return response
 
 
 @app.get("/api/workflow-capabilities")
@@ -138,7 +274,9 @@ def simulated_panel() -> dict:
     real?" Anything not listed here should be assumed to need a label.
     """
     live_maps = bool(config.GOOGLE_MAPS_API_KEY)
-    live_llm = provider_status()["active_provider"] == "gemini"
+    llm_status = provider_status()
+    live_llm = llm_status.get("readiness") == "LIVE_CALL_CONFIRMED"
+    configured_llm = llm_status.get("configured_provider") == "gemini"
     return {"demo_reset_available": config.APP_ENV != "production", "elements": [
         {"element": "Wolf Creek location identity", "state": "PUBLIC_FACT",
          "note": "Independently confirmed against OpenStreetMap (relation 142995) — "
@@ -155,9 +293,11 @@ def simulated_panel() -> dict:
          "note": "362-row one-off assessment snapshot; reviewer identity removed; locally filtered by date and rating."},
         {"element": "Atlanta competitor benchmark", "state": "SCRAPED_PUBLIC_WEB_AGGREGATE",
          "note": "1,235 anonymized comparator reviews across three nearby public courses; directional cohort, not a market claim."},
-        {"element": "LLM analysis", "state": "LIVE_API (gemini-2.5-flash)" if live_llm else "DETERMINISTIC_FIXTURE_ENGINE"},
+        {"element": "LLM analysis", "state": ("LIVE_API (gemini-2.5-flash)" if live_llm
+                                                else "CONFIGURED_NOT_PROBED" if configured_llm
+                                                else "DETERMINISTIC_FIXTURE_ENGINE")},
         {"element": "Photo description (vision)",
-         "state": "LIVE_API" if live_llm else "UNAVAILABLE_BY_DESIGN",
+         "state": "LIVE_API" if live_llm else "CONFIGURED_NOT_PROBED" if configured_llm else "UNAVAILABLE_BY_DESIGN",
          "note": "No fixture stand-in exists for vision: a description of an image "
                  "nobody looked at would be indistinguishable from evidence."},
         {"element": "Adversarial challenge panel",
@@ -247,6 +387,11 @@ def field_guide(location_id: str) -> dict:
                     "severity_default": standard.severity_default,
                     "source_label": standard.source_label,
                     "authoritative": False,
+                    "photo_policy": issue_photo_policy(
+                        standard.code,
+                        category=standard.category,
+                        severity=standard.severity_default,
+                    ),
                     **standard_metadata(standard.code),
                 })
         guide_zones.append({
@@ -322,6 +467,11 @@ class AuditCreate(BaseModel):
     consultant_name: str = Field(default="Field Consultant", min_length=2, max_length=120)
 
 
+class AuditDeleteBody(BaseModel):
+    confirm_audit_id: str = Field(min_length=1, max_length=100)
+    requested_by: str = Field(min_length=2, max_length=120)
+
+
 class ObservationCreate(BaseModel):
     # Provenance-sensitive kinds (CHECKLIST, PHOTO_DESCRIPTION, VOICE_TRANSCRIPT,
     # VIDEO_DESCRIPTION) are server-assigned by their dedicated endpoints.
@@ -345,6 +495,7 @@ class ChecklistResponse(BaseModel):
     detail: str = Field(default="", max_length=3000)
     zone_id: str | None = None
     evidence_observation_ids: list[str] = Field(default_factory=list, max_length=20)
+    photo_decision: Literal["ATTACHED", "CONTINUE_WITHOUT_PHOTO"] | None = None
 
     @field_validator("response", mode="before")
     @classmethod
@@ -503,6 +654,116 @@ def create_audit(body: AuditCreate) -> dict:
     return out
 
 
+@app.get("/api/audits")
+def list_audits(tenant_id: str, location_id: str) -> list[dict]:
+    """Recent visits for the explicit tenant/location context."""
+    db = SessionLocal()
+    location = db.get(Location, location_id)
+    if location is None or location.tenant_id != tenant_id:
+        db.close()
+        raise HTTPException(404, "tenant/location context not found")
+    rows = (db.query(AuditSession).filter_by(
+        tenant_id=tenant_id, location_id=location_id,
+    ).order_by(AuditSession.created_at.desc()).limit(25).all())
+    out = [{
+        "id": row.id,
+        "status": row.status,
+        "consultant_name": row.consultant_name,
+        "created_at": row.created_at.isoformat(),
+        "updated_at": row.updated_at.isoformat(),
+        "checklist_responses": len(row.checklist_responses or []),
+        "can_discard": (
+            config.APP_ENV != "production"
+            and row.status not in IMMUTABLE_AUDIT_STATUSES
+        ),
+    } for row in rows]
+    db.close()
+    return out
+
+
+@app.delete("/api/audits/{audit_id}")
+def discard_audit(audit_id: str, body: AuditDeleteBody) -> dict:
+    """Discard one unfinished local/demo visit after exact-id confirmation.
+
+    Submitted packets are audit records and cannot be deleted from this POC.
+    Production has no unauthenticated delete path; SSO/RBAC and retention policy
+    must own that decision there.
+    """
+    if config.APP_ENV == "production":
+        raise HTTPException(404)
+    if body.confirm_audit_id != audit_id:
+        raise HTTPException(422, "confirmation does not match the visit being discarded")
+    db = SessionLocal()
+    audit = db.get(AuditSession, audit_id)
+    if audit is None:
+        db.close()
+        raise HTTPException(404, "visit not found")
+    if audit.status in IMMUTABLE_AUDIT_STATUSES:
+        db.close()
+        raise HTTPException(
+            409,
+            "submitted review packets are immutable; start a new visit instead",
+        )
+
+    observations = db.query(Observation).filter_by(audit_id=audit_id).all()
+    findings = db.query(Finding).filter_by(audit_id=audit_id).all()
+    questions = db.query(ClarificationQuestion).filter_by(audit_id=audit_id).all()
+    observation_ids = {row.id for row in observations}
+    finding_ids = {row.id for row in findings}
+    question_ids = {row.id for row in questions}
+    actions = (db.query(Action).filter(Action.finding_id.in_(finding_ids)).all()
+               if finding_ids else [])
+    action_ids = {row.id for row in actions}
+    related_refs = observation_ids | finding_ids | action_ids
+    tickets = [row for row in db.query(OperationalTicket).filter_by(
+        tenant_id=audit.tenant_id, location_id=audit.location_id).all()
+        if related_refs.intersection(row.source_refs or [])]
+    ticket_ids = {row.id for row in tickets}
+    evidence = [row for row in db.query(EvidenceItem).filter_by(
+        tenant_id=audit.tenant_id, location_id=audit.location_id).all()
+        if (row.payload or {}).get("observation_id") in observation_ids]
+    digests = {
+        digest for row in evidence
+        for digest in ((row.payload or {}).get("image_sha256"),
+                       (row.payload or {}).get("media_sha256"))
+        if digest
+    }
+    entity_ids = ({audit_id} | observation_ids | finding_ids | question_ids |
+                  action_ids | ticket_ids)
+
+    for row in actions + tickets + evidence + findings + questions + observations:
+        db.delete(row)
+    db.query(ModelCall).filter_by(audit_id=audit_id).delete(
+        synchronize_session=False)
+    if entity_ids:
+        db.query(AuditLog).filter(AuditLog.entity_id.in_(entity_ids)).delete(
+            synchronize_session=False)
+    db.delete(audit)
+    db.commit()
+
+    # Remove an orphaned upload only when no remaining evidence envelope refers
+    # to its digest. A repeated upload used by another visit is retained.
+    remaining_evidence = db.query(EvidenceItem).all()
+    remaining_digests = {
+        digest for row in remaining_evidence
+        for digest in ((row.payload or {}).get("image_sha256"),
+                       (row.payload or {}).get("media_sha256"))
+        if digest
+    }
+    removed_files = 0
+    for digest in digests - remaining_digests:
+        for path in config.UPLOADS_DIR.glob(f"{digest}.*"):
+            if path.is_file():
+                path.unlink()
+                removed_files += 1
+    db.close()
+    return {
+        "discarded": audit_id,
+        "requested_by": body.requested_by,
+        "removed_files": removed_files,
+    }
+
+
 @app.get("/api/audits/{audit_id}")
 def get_audit(audit_id: str) -> dict:
     db = SessionLocal()
@@ -527,7 +788,8 @@ def get_audit(audit_id: str) -> dict:
             row for row in qs
             if row.observation_id == finding.observation_id and row.answer
             and not (row.why_needed or "").startswith(
-                ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:"))
+                ("PHOTO_REQUIRED:", "PHOTO_RECOMMENDED:",
+                 "UNMAPPED_PHOTO_REQUIRED:"))
         ], key=lambda row: row.created_at)
         if len(history) <= 2:
             return finding.consultant_statement
@@ -566,8 +828,13 @@ def get_audit(audit_id: str) -> dict:
         "questions": [{"id": q.id, "observation_id": q.observation_id, "question": q.question,
                        "why_needed": q.why_needed, "options": q.options, "answer": q.answer,
                        "status": q.status,
-                       "response_type": ("PHOTO" if q.why_needed.startswith(
-                           ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:")) else "TEXT"),
+                       "response_type": (
+                           "PHOTO" if q.why_needed.startswith(
+                               ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:"))
+                           else "PHOTO_RECOMMENDED" if q.why_needed.startswith(
+                               "PHOTO_RECOMMENDED:")
+                           else "TEXT"
+                       ),
                        "observation_excerpt": next(
                            (o.text[:500] for o in obs if o.id == q.observation_id), "")}
                       for q in qs],
@@ -824,15 +1091,16 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
     desc = None
     vision_error = ""
     try:
-        desc = get_provider().describe_image(
-            image_bytes=raw, mime_type=mime, zone_hint=zone_name,
-            privacy_level=privacy,
-            evidence_request=(
-                target_observation.text if target_observation is not None
-                else standard.text if standard is not None
-                else ""
-            ),
-            tenant_id=a.tenant_id, audit_id=audit_id)
+        with audit_lock(audit_id):
+            desc = get_provider().describe_image(
+                image_bytes=raw, mime_type=mime, zone_hint=zone_name,
+                privacy_level=privacy,
+                evidence_request=(
+                    target_observation.text if target_observation is not None
+                    else standard.text if standard is not None
+                    else ""
+                ),
+                tenant_id=a.tenant_id, audit_id=audit_id)
     except Exception as exc:
         vision_error = str(exc)
         if not (supports_observation_id or evidence_for_standard_code):
@@ -841,9 +1109,12 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
                 raise
             raise HTTPException(503, f"vision unavailable: {exc}")
 
-    if desc is not None and not desc.usable_as_evidence:
+    if desc is not None and (not desc.usable_as_evidence or (
+            bool(supports_observation_id or evidence_for_standard_code or zone_id)
+            and not desc.matches_requested_context)):
         db.close()
-        return {"accepted": False, "reason": desc.unusable_reason,
+        return {"accepted": False,
+                "reason": desc.mismatch_reason or desc.unusable_reason,
                 "people_visible": desc.people_visible,
                 "image_quality_issues": desc.image_quality_issues,
                 "note": "No observation was created. An unusable photo is a result, not a failure."}
@@ -880,6 +1151,11 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
                              "people_visible": desc.people_visible if desc else None,
                              "vision_model": config.LLM_MODEL if desc else None,
                              "vision_error": vision_error[:500],
+                             "semantic_match": (
+                                 desc.matches_requested_context if desc is not None else None),
+                             "semantic_validation": (
+                                 "GEMINI_VALIDATED" if desc is not None
+                                 else "MANUAL_REVIEW_REQUIRED"),
                              "supports_observation_id": supports_observation_id,
                              "evidence_for_standard_code": evidence_for_standard_code,
                              "support_only": bool(supports_observation_id or evidence_for_standard_code),
@@ -908,7 +1184,8 @@ async def add_photo(audit_id: str, file: UploadFile = File(...),
             audit_id=audit_id, observation_id=target_observation.id, status="OPEN")
             .order_by(ClarificationQuestion.created_at.desc()).first())
         if photo_question is not None and photo_question.why_needed.startswith(
-                ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:")):
+                ("PHOTO_REQUIRED:", "PHOTO_RECOMMENDED:",
+                 "UNMAPPED_PHOTO_REQUIRED:")):
             photo_question.answer = f"Photo evidence captured: {o.id}"
             photo_question.status = "ANSWERED"
             if photo_question.why_needed.startswith("UNMAPPED_PHOTO_REQUIRED:"):
@@ -1027,9 +1304,10 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
     if standard_code:
         standard = db.query(Standard).filter_by(
             tenant_id=audit.tenant_id, code=standard_code, active=True).first()
-        if standard is None:
+        if (standard is None or zone is None
+                or standard.code not in ZONE_CHECK_CODES.get(zone.name, [])):
             db.close()
-            raise HTTPException(422, "standard does not belong to this audit tenant")
+            raise HTTPException(422, "media checklist target is not valid for this audit zone")
 
     mime = (file.content_type or "").lower()
     if mime not in ALLOWED_MEDIA_TYPES[media_kind]:
@@ -1046,12 +1324,13 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
         raise HTTPException(415, "file contents do not match the declared media type")
 
     try:
-        desc = get_provider().describe_media(
-            media_bytes=raw, mime_type=mime, media_kind=media_kind,
-            zone_hint=(zone.name if zone else ""), privacy_level=privacy,
-            standard_hint=(f"{standard.code}: {standard.text}" if standard else ""),
-            tenant_id=audit.tenant_id, audit_id=audit_id,
-        )
+        with audit_lock(audit_id):
+            desc = get_provider().describe_media(
+                media_bytes=raw, mime_type=mime, media_kind=media_kind,
+                zone_hint=(zone.name if zone else ""), privacy_level=privacy,
+                standard_hint=(f"{standard.code}: {standard.text}" if standard else ""),
+                tenant_id=audit.tenant_id, audit_id=audit_id,
+            )
     except ModelBudgetExceeded:
         db.close()
         raise
@@ -1060,9 +1339,10 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
         raise HTTPException(
             503, "multimodal analysis unavailable; media was not stored and no observation was created")
 
-    if not desc.usable_as_evidence:
+    if not desc.usable_as_evidence or not desc.matches_requested_context:
         db.close()
-        return {"accepted": False, "reason": desc.unusable_reason,
+        return {"accepted": False,
+                "reason": desc.mismatch_reason or desc.unusable_reason,
                 "quality_issues": desc.quality_issues,
                 "note": "No observation was created from unusable media."}
     if media_kind == "VIDEO" and privacy == "HIGH" and desc.people_visible:
@@ -1111,6 +1391,8 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
             "declined_to_assert": desc.declined_to_assert,
             "quality_issues": desc.quality_issues,
             "people_visible": desc.people_visible, "model": config.LLM_MODEL,
+            "semantic_match": desc.matches_requested_context,
+            "semantic_validation": "GEMINI_VALIDATED",
             "verification_state": (
                 "CONSULTANT_REPORTED" if media_kind == "AUDIO" else "MEDIA_CAPTURED"),
             "awaiting_confirmation": media_kind == "AUDIO",
@@ -1147,6 +1429,11 @@ async def add_media(audit_id: str, file: UploadFile = File(...),
 
 @app.post("/api/audits/{audit_id}/checklist")
 def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
+    with audit_lock(audit_id):
+        return _submit_checklist_unlocked(audit_id, body)
+
+
+def _submit_checklist_unlocked(audit_id: str, body: ChecklistSubmit) -> dict:
     db = SessionLocal()
     a = db.get(AuditSession, audit_id)
     if a is None:
@@ -1187,15 +1474,30 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
                 422,
                 f"conditional check {standard.code} requires the verified condition or applicability reason",
             )
-        evidence_ids = r.get("evidence_observation_ids") or []
+        evidence_ids = list(dict.fromkeys(r.get("evidence_observation_ids") or []))
+        r["evidence_observation_ids"] = evidence_ids
+        photo_policy = issue_photo_policy(
+            standard.code,
+            category=standard.category,
+            severity=standard.severity_default,
+        )
+        r["photo_policy"] = photo_policy
         if r["response"] == "FAIL" and not evidence_ids:
-            db.close()
-            raise HTTPException(
-                422, f"issue {standard.code} requires an explicitly linked photo")
+            if photo_policy["level"] == "REQUIRED":
+                db.close()
+                raise HTTPException(
+                    422, f"issue {standard.code} requires an explicitly linked photo")
+            if r.get("photo_decision") != "CONTINUE_WITHOUT_PHOTO":
+                db.close()
+                raise HTTPException(
+                    422,
+                    f"AI recommends a photo for issue {standard.code}; attach one or "
+                    "explicitly continue without a photo",
+                )
         if evidence_ids:
             evidence_rows = db.query(Observation).filter(
                 Observation.id.in_(evidence_ids), Observation.audit_id == audit_id).all()
-            if len(evidence_rows) != len(set(evidence_ids)) or any(
+            if len(evidence_rows) != len(evidence_ids) or any(
                     o.kind != "PHOTO_DESCRIPTION"
                     for o in evidence_rows):
                 db.close()
@@ -1204,8 +1506,31 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
                 db.close()
                 raise HTTPException(
                     422, "checklist evidence must come from the same inspection zone")
+            for evidence_row in evidence_rows:
+                payload = evidence_row.payload or {}
+                if payload.get("semantic_match") is False:
+                    db.close()
+                    raise HTTPException(
+                        422, "checklist evidence was assessed as unrelated to this issue")
+                direct_code = payload.get("evidence_for_standard_code")
+                supported_observation_id = payload.get("supports_observation_id")
+                linked_finding = (db.query(Finding).filter_by(
+                    audit_id=audit_id,
+                    observation_id=supported_observation_id,
+                    standard_id=standard.id,
+                ).first() if supported_observation_id else None)
+                if direct_code != standard.code and linked_finding is None:
+                    db.close()
+                    raise HTTPException(
+                        422,
+                        f"photo is not linked to checklist issue {standard.code}; "
+                        "capture or select evidence for this exact issue",
+                    )
+            r["photo_decision"] = "ATTACHED"
         r["verification_state"] = (
-            "PHOTO_ATTACHED_PENDING_REVIEW" if evidence_ids else "CONSULTANT_REPORTED")
+            "PHOTO_ATTACHED_PENDING_REVIEW" if evidence_ids else
+            "CONSULTANT_REPORTED_PHOTO_RECOMMENDED"
+            if r["response"] == "FAIL" else "CONSULTANT_REPORTED")
     # A field visit submits one area at a time. Preserve prior areas and replace
     # only the same zone/standard answer; overwriting the JSON list here made a
     # multi-zone audit appear complete while retaining only its final screen.
@@ -1289,6 +1614,8 @@ def submit_checklist(audit_id: str, body: ChecklistSubmit) -> dict:
                        "standard_metadata": r.get("standard_metadata") or {},
                        "authoritative": False,
                        "evidence_observation_ids": r.get("evidence_observation_ids") or [],
+                       "photo_decision": r.get("photo_decision"),
+                       "photo_policy": r.get("photo_policy") or {},
                        "verification_state": r["verification_state"]}
             text = f"Checklist item failed: {r['item']} — {r.get('detail')}"
             if existing is None:
@@ -1861,17 +2188,30 @@ async def add_ticket_evidence(ticket_id: str, stage: str = Form(...),
         db.close()
         raise HTTPException(
             409, "after evidence is accepted only after the concern has been validated")
-    raw = await file.read()
-    if not raw or len(raw) > MAX_PHOTO_BYTES:
-        db.close()
-        raise HTTPException(413, "invalid evidence image size")
     mime = (file.content_type or "").lower()
     if mime not in ALLOWED_IMAGE_TYPES:
         db.close()
         raise HTTPException(415, "unsupported evidence image type")
     try:
+        raw = await _read_upload_limited(file, MAX_PHOTO_BYTES)
         with Image.open(BytesIO(raw)) as image:
+            if image.width * image.height > MAX_IMAGE_PIXELS:
+                raise ValueError("decoded image is too large")
             image.verify()
+        # Use the same canonical evidence pipeline as field/action photos so
+        # ticket uploads cannot retain EXIF, GPS or embedded thumbnails.
+        with Image.open(BytesIO(raw)) as image:
+            image = ImageOps.exif_transpose(image)
+            if mime == "image/jpeg" and image.mode not in {"RGB", "L"}:
+                image = image.convert("RGB")
+            canonical = BytesIO()
+            image.save(canonical, format={
+                "image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WEBP",
+            }[mime])
+            raw = canonical.getvalue()
+    except HTTPException:
+        db.close()
+        raise
     except (UnidentifiedImageError, OSError, ValueError):
         db.close()
         raise HTTPException(415, "file contents are not a valid supported image")

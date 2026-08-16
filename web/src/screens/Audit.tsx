@@ -4,10 +4,14 @@ import type { Ctx } from "../App";
 import VoiceRecorder from "../components/VoiceRecorder";
 import "../field.css";
 
-type CheckAnswer = { response: "PASS" | "FAIL" | "NOT_APPLICABLE"; detail: string };
+type CheckAnswer = {
+  response: "PASS" | "FAIL" | "NOT_APPLICABLE";
+  detail: string;
+  photoDecision?: "ATTACHED" | "CONTINUE_WITHOUT_PHOTO";
+};
 type CaptureState = "UPLOADING" | "ANALYZING" | "CONFIRM" | "SAVED" | "FAILED";
 type PendingCapture = { id: string; label: string; state: CaptureState; detail?: string; zoneId?: string };
-type CaptureReceipt = { id: string; zoneId: string; title: string; detail: string };
+type CaptureReceipt = { id: string; zoneId: string; observationId: string; title: string; detail: string };
 const hasUnresolvedPlaceholder = (value: string) => /\[[^\]]+\]|\{[^}]+\}|<[^>]+>/.test(value);
 type AuditBudget = {
   used_calls: number; limit_calls: number; remaining_calls: number;
@@ -63,6 +67,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   const [reviewing, setReviewing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
+  const [visits, setVisits] = useState<any[]>([]);
+  const [discardConfirmId, setDiscardConfirmId] = useState("");
+  const [visitBusy, setVisitBusy] = useState("");
   const [budgetGate, setBudgetGate] = useState<AuditBudget | null>(null);
   const [budgetBusy, setBudgetBusy] = useState(false);
   const [budgetNotice, setBudgetNotice] = useState("");
@@ -82,11 +89,15 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
     return next;
   };
 
+  const refreshVisits = () => api.audits(ctx.tenantId, ctx.locationId)
+    .then(setVisits).catch(() => setVisits([]));
+
   useEffect(() => {
     setError("");
     setReviewing(false);
     setSubmitted(false);
     setConfirmNew(false);
+    setDiscardConfirmId("");
     setText("");
     setShowText(false);
     setWrittenPhoto(false);
@@ -106,6 +117,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       setGuide(next);
       setZoneId(next.zones?.[0]?.id || "");
     }).catch((err: any) => setError(`Field guide unavailable: ${err.message}`));
+    void refreshVisits();
     if (ctx.auditId) {
       refresh(ctx.auditId).catch(() => ctx.setAuditId(null));
       api.auditBudget(ctx.auditId).then((budget: AuditBudget) => {
@@ -154,6 +166,8 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   }, [caseTicket]);
 
   const currentZone = guide?.zones?.find((zone: any) => zone.id === zoneId);
+  const locationName = ctx.tenants.flatMap((tenant: any) => tenant.locations ?? [])
+    .find((location: any) => location.id === ctx.locationId)?.name ?? "this location";
   const requiredZones = guide?.zones?.filter((zone: any) => zone.required) ?? [];
   const observations = audit?.observations ?? [];
   const checklistResponses = audit?.checklist_responses ?? [];
@@ -198,7 +212,12 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
     const answer = checks[check.id];
     if (!answer) return false;
     if (answer.response === "FAIL") {
-      return answer.detail.trim().length < 5 || !(evidenceLinks[check.id] ?? []).length;
+      const hasPhoto = Boolean((evidenceLinks[check.id] ?? []).length);
+      const photoLevel = check.photo_policy?.level ?? "RECOMMENDED";
+      return answer.detail.trim().length < 5 ||
+        (photoLevel === "REQUIRED" && !hasPhoto) ||
+        (photoLevel === "RECOMMENDED" && !hasPhoto &&
+          answer.photoDecision !== "CONTINUE_WITHOUT_PHOTO");
     }
     if (answer.response === "NOT_APPLICABLE") {
       return answer.detail.trim().length < 5;
@@ -222,6 +241,15 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   const savedCaptures = pending.filter(item => item.state === "SAVED");
   const failedCaptures = pending.filter(item => item.state === "FAILED");
   const currentReceipts = captureReceipts.filter(receipt => receipt.zoneId === zoneId);
+  const unresolvedConflicts = checklistResponses.filter((response: any) => response.reconciliation_conflict);
+
+  useEffect(() => {
+    setCaptureReceipts(receipts => receipts.filter(receipt => {
+      const nowHasFinding = visibleFindings.some((finding: any) => finding.observation_id === receipt.observationId);
+      const nowHasQuestion = openQuestions.some((question: any) => question.observation_id === receipt.observationId);
+      return !nowHasFinding && !nowHasQuestion;
+    }));
+  }, [audit?.findings, audit?.questions]);
 
   const updatePending = (id: string, update: Partial<PendingCapture>) =>
     setPending(items => items.map(item => item.id === id ? { ...item, ...update } : item));
@@ -260,8 +288,22 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       setPrivacyAttested(false); setShowHandoffDetails(false);
       setBudgetGate(null);
       ctx.setAuditId(created.id);
+      setConfirmNew(false);
+      setDiscardConfirmId("");
+      await refreshVisits();
     } catch (err: any) { setError(err.message); }
     finally { setStarting(false); }
+  };
+
+  const discardVisit = async (id: string) => {
+    setVisitBusy(id); setError("");
+    try {
+      await api.discardAudit(id, ctx.role);
+      if (ctx.auditId === id) ctx.setAuditId(null);
+      setDiscardConfirmId("");
+      await refreshVisits();
+    } catch (err: any) { setError(err.message); }
+    finally { setVisitBusy(""); }
   };
 
   const continueAfterBudgetPause = async () => {
@@ -303,8 +345,10 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         const analysed: any = await queueAnalysis(ctx.auditId!);
         const producedFinding = (analysed?.findings ?? []).some((finding: any) =>
           !priorFindingIds.has(finding.id) && (!observation?.id || finding.observation_id === observation.id));
-        if (!producedFinding) setCaptureReceipts(receipts => [{
-          id, zoneId: captureZoneId, title: "Observation saved — no issue suggested",
+        const producedQuestion = (analysed?.questions ?? []).some((question: any) =>
+          question.status === "OPEN" && question.observation_id === observation?.id);
+        if (!producedFinding && !producedQuestion) setCaptureReceipts(receipts => [{
+          id, zoneId: captureZoneId, observationId: observation.id, title: "Observation saved — no issue suggested",
           detail: `Saved to ${captureZoneName}. It remains in the evidence record; no candidate issue or ticket was created from this note.`,
         }, ...receipts.filter(receipt => receipt.id !== id)]);
         removePendingSoon(id);
@@ -339,6 +383,10 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
             ...previous,
             [checkId]: [...new Set([...(previous[checkId] ?? []), result.observation_id])],
           }));
+          setChecks(previous => previous[checkId] ? ({
+            ...previous,
+            [checkId]: { ...previous[checkId], photoDecision: "ATTACHED" },
+          }) : previous);
           updatePending(id, { state: "SAVED", detail: "Linked to the selected Issue check" });
           await refresh(ctx.auditId!);
         } else {
@@ -362,8 +410,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
     setError("");
     void (async () => {
       try {
-        const standardCode = currentZone?.checks?.[0]?.standard_code ?? null;
-        const result = await api.uploadMedia(ctx.auditId!, mediaKind, file, captureZoneId || null, standardCode, privacyAttested);
+        // A general voice/video capture can mention any condition in the area.
+        // Only checklist-specific uploads carry a standard target.
+        const result = await api.uploadMedia(ctx.auditId!, mediaKind, file, captureZoneId || null, null, privacyAttested);
         if (!result.accepted) {
           updatePending(id, { state: "FAILED", detail: result.reason });
           await refresh(ctx.auditId!);
@@ -399,8 +448,10 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       const analysed: any = await queueAnalysis(ctx.auditId);
       const producedFinding = (analysed?.findings ?? []).some((finding: any) =>
         !priorFindingIds.has(finding.id) && finding.observation_id === observationId);
-      if (!producedFinding) setCaptureReceipts(receipts => [{
-        id: pendingId, zoneId: captureZoneId, title: "Voice note saved — no issue suggested",
+      const producedQuestion = (analysed?.questions ?? []).some((question: any) =>
+        question.status === "OPEN" && question.observation_id === observationId);
+      if (!producedFinding && !producedQuestion) setCaptureReceipts(receipts => [{
+        id: pendingId, zoneId: captureZoneId, observationId, title: "Voice note saved — no issue suggested",
         detail: `Transcript confirmed and saved to ${captureZoneName}. No candidate issue or ticket was created from this note.`,
       }, ...receipts.filter(receipt => receipt.id !== pendingId)]);
       removePendingSoon(pendingId);
@@ -418,9 +469,20 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       checks[check.id].response === "FAIL" && checks[check.id].detail.trim().length < 5);
     if (incompleteIssue) { setError("Describe the observable condition for every issue before saving."); return; }
     const issueWithoutPhoto = selected.find((check: any) =>
-      checks[check.id].response === "FAIL" && !(evidenceLinks[check.id] ?? []).length);
+      checks[check.id].response === "FAIL" &&
+      (check.photo_policy?.level ?? "RECOMMENDED") === "REQUIRED" &&
+      !(evidenceLinks[check.id] ?? []).length);
     if (issueWithoutPhoto) {
-      setError("Take or explicitly attach a photo before saving an Issue.");
+      setError(`A photo is required for ${issueWithoutPhoto.standard_code} before this Issue can be saved.`);
+      return;
+    }
+    const recommendationUndecided = selected.find((check: any) =>
+      checks[check.id].response === "FAIL" &&
+      (check.photo_policy?.level ?? "RECOMMENDED") === "RECOMMENDED" &&
+      !(evidenceLinks[check.id] ?? []).length &&
+      checks[check.id].photoDecision !== "CONTINUE_WITHOUT_PHOTO");
+    if (recommendationUndecided) {
+      setError("Choose whether to add the AI-recommended photo or continue without one.");
       return;
     }
     const incompleteApplicability = selected.find((check: any) => {
@@ -443,11 +505,13 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         detail: checks[check.id].detail,
         zone_id: zoneId,
         evidence_observation_ids: checks[check.id].response === "FAIL" ? (evidenceLinks[check.id] ?? []) : [],
+        photo_decision: checks[check.id].response === "FAIL"
+          ? ((evidenceLinks[check.id] ?? []).length ? "ATTACHED" : checks[check.id].photoDecision)
+          : undefined,
       }));
-      const replacementKeys = new Set(additions.map((response: any) => `${response.zone_id}|${response.standard_code}`));
-      const preserved = checklistResponses.filter((response: any) =>
-        !replacementKeys.has(`${response.zone_id}|${response.standard_code}`));
-      const result = await api.submitChecklist(ctx.auditId, [...preserved, ...additions]);
+      // The server owns cross-area merging. Sending only this area's edits
+      // prevents a stale historical row from blocking every later save.
+      const result = await api.submitChecklist(ctx.auditId, additions);
       setChecks(previous => {
         const next = { ...previous };
         selected.forEach((check: any) => delete next[check.id]);
@@ -476,7 +540,14 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   };
 
   const setCheck = (id: string, response: CheckAnswer["response"]) =>
-    setChecks(previous => ({ ...previous, [id]: { response, detail: previous[id]?.detail ?? "" } }));
+    setChecks(previous => ({
+      ...previous,
+      [id]: {
+        response,
+        detail: previous[id]?.detail ?? "",
+        photoDecision: response === "FAIL" ? previous[id]?.photoDecision : undefined,
+      },
+    }));
   const markAreaClear = () => {
     if (!bulkClearableChecks.length) return;
     setChecks(previous => {
@@ -489,8 +560,16 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   };
   const toggleEvidence = (checkId: string, observationId: string) => setEvidenceLinks(previous => {
     const current = previous[checkId] ?? [];
-    return { ...previous, [checkId]: current.includes(observationId)
-      ? current.filter(id => id !== observationId) : [...current, observationId] };
+    const next = current.includes(observationId)
+      ? current.filter(id => id !== observationId) : [...current, observationId];
+    setChecks(answers => answers[checkId] ? ({
+      ...answers,
+      [checkId]: {
+        ...answers[checkId],
+        photoDecision: next.length ? "ATTACHED" : answers[checkId].photoDecision,
+      },
+    }) : answers);
+    return { ...previous, [checkId]: next };
   });
   const guardUnsavedDraft = () => {
     if (showText && text.trim()) {
@@ -533,7 +612,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
   };
 
   const submitVisit = async () => {
-    if (!ctx.auditId || openQuestions.length || remainingZones.length || pending.length) return;
+    if (!ctx.auditId || openQuestions.length || unresolvedConflicts.length || remainingZones.length || pending.length) return;
     setFinalizing(true); setError("");
     try {
       const analysed = await queueAnalysis(ctx.auditId);
@@ -552,14 +631,31 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <div className="fi-trust-note"><b>Sourced guide, human decision</b><span>{guide?.disclaimer ?? "Loading the field guide…"}</span></div>
       {error && <div className="fi-error" role="alert">{error}</div>}
       <button className="fi-primary fi-start-button" disabled={starting || !guide} onClick={start}>
-        {starting ? "Preparing visit…" : "Start Wolf Creek walkthrough"}
+        {starting ? "Preparing visit…" : `Start ${locationName} walkthrough`}
       </button>
+      {visits.length > 0 && <section className="fi-recent-visits">
+        <div><b>Recent visits</b><span>Resume an unfinished walkthrough or inspect a submitted record.</span></div>
+        {visits.slice(0, 6).map((visit: any) => <article key={visit.id}>
+          <button type="button" className="fi-visit-open" onClick={() => ctx.setAuditId(visit.id)}>
+            <span>{new Date(visit.created_at).toLocaleString()}</span>
+            <b>{String(visit.status).split("_").join(" ")}</b>
+            <small>{visit.checklist_responses} guide checks · {visit.id}</small>
+          </button>
+          {visit.can_discard && (discardConfirmId !== visit.id
+            ? <button type="button" className="fi-discard-link" onClick={() => setDiscardConfirmId(visit.id)}>Discard draft</button>
+            : <div className="fi-discard-confirm"><span>Discard this unfinished visit and its evidence?</span>
+              <button type="button" onClick={() => setDiscardConfirmId("")}>Keep</button>
+              <button type="button" disabled={visitBusy === visit.id} onClick={() => discardVisit(visit.id)}>
+                {visitBusy === visit.id ? "Discarding…" : "Yes, discard draft"}
+              </button></div>)}
+        </article>)}
+      </section>}
     </section>
   </div>;
 
   if (reviewing) {
     const activeCaptures = pending.filter(item => !["FAILED", "SAVED"].includes(item.state));
-    const ready = !remainingZones.length && !openQuestions.length && !pending.length;
+    const ready = !remainingZones.length && !openQuestions.length && !unresolvedConflicts.length && !pending.length;
     return <div className="fi-shell fi-review">
       <button className="fi-back" onClick={() => { setReviewing(false); setSubmitted(false); }}>← Back to walkthrough</button>
       <span className="fi-kicker">VISIT REVIEW</span>
@@ -570,7 +666,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         <div><b>{completeZones.length}/{requiredZones.length}</b><span>areas complete</span></div>
         <div><b>{completedChecks}/{totalChecks}</b><span>guide checks</span></div>
         <div><b>{visibleFindings.length}</b><span>candidate issues</span></div>
-        <div className={uniqueOpenQuestions.length ? "attention" : ""}><b>{uniqueOpenQuestions.length}</b><span>answers needed</span></div>
+        <div className={uniqueOpenQuestions.length || unresolvedConflicts.length ? "attention" : ""}>
+          <b>{uniqueOpenQuestions.length + unresolvedConflicts.length}</b><span>decisions needed</span>
+        </div>
       </div>
 
       {submitted ? <section className="fi-handoff">
@@ -609,6 +707,15 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
             setReviewing(false);
           }}><span>{guide?.zones?.find((zone: any) => zone.id === questionZone(question))?.name ?? "Visit"}</span>{question.question}</button>)}
         </section>}
+        {unresolvedConflicts.length > 0 && <section className="fi-review-block">
+          <h2>Checklist decisions still needed</h2>
+          {unresolvedConflicts.map((response: any) => <button className="fi-review-question"
+            key={`${response.zone_id}|${response.standard_code}`} onClick={() => {
+              setZoneId(response.zone_id); setReviewing(false);
+            }}><span>{guide?.zones?.find((zone: any) => zone.id === response.zone_id)?.name ?? "Visit"}</span>
+            Resolve {response.standard_code}: your saved answer conflicts with later field evidence
+          </button>)}
+        </section>}
         {activeCaptures.length > 0 && <div className="fi-queue-note">{activeCaptures.length} capture(s) are still processing. You can continue reviewing while they finish.</div>}
         {failedCaptures.length > 0 && <div className="fi-queue-note fi-queue-failed">
           <b>{failedCaptures.length} capture{failedCaptures.length === 1 ? " needs" : "s need"} attention.</b>
@@ -632,8 +739,19 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         <span className="fi-kicker">CURRENT AREA</span>
         <h1>{currentZone?.name ?? "Choose an area"}</h1>
       </div>
-      <button className="fi-review-link" onClick={openReview}>Review visit</button>
+      <div className="fi-visit-header-actions">
+        <button type="button" onClick={() => setConfirmNew(true)}>New visit</button>
+        <button className="fi-review-link" onClick={openReview}>Review visit</button>
+      </div>
     </header>
+
+    {confirmNew && <section className="fi-new-visit-confirm" role="alert">
+      <div><b>Start a fresh walkthrough?</b><span>This visit stays saved. The new visit becomes active immediately.</span></div>
+      <button type="button" onClick={() => setConfirmNew(false)}>Keep current visit</button>
+      <button type="button" className="fi-primary" disabled={starting} onClick={start}>
+        {starting ? "Preparing…" : "Start new visit"}
+      </button>
+    </section>}
 
     <div className="fi-progress" data-tour="visit-progress" aria-label={`Visit progress ${visitProgress}%`}>
       <div><b>{completeZones.length} of {requiredZones.length} areas</b><span>{completedChecks} of {totalChecks} guide checks</span></div>
@@ -747,7 +865,9 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       <div className="fi-assistant-title"><span className="fi-orb">AI</span><div><b>One detail would make this stronger.</b><span>Answer now or keep moving and return before handoff.</span></div></div>
       {currentQuestions.map((question: any) => <article key={question.id}>
         <span className="fi-question-progress">{question.response_type === "PHOTO"
-          ? "Evidence step · clarification complete"
+          ? "Required evidence step · clarification complete"
+          : question.response_type === "PHOTO_RECOMMENDED"
+          ? "Recommended evidence · your choice"
           : `Clarification ${Math.min(2, (audit?.questions ?? []).filter((row: any) =>
               row.observation_id === question.observation_id && row.response_type === "TEXT" &&
               row.status === "ANSWERED").length + 1)} of 2`}
@@ -755,6 +875,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
         {question.observation_excerpt && <blockquote className="fi-question-context">“{question.observation_excerpt}”</blockquote>}
         <p>{question.question}</p>
         <small>{String(question.why_needed ?? "").replace(/^[A-Z_]+:\s*/, "")}</small>
+        {questionBusy === question.id && <div className="fi-ai-wait" role="status">AI is assessing this answer. Keep this visit open; this can take up to a minute.</div>}
         {question.response_type === "PHOTO" ? <label className={`fi-requested-photo ${budgetGate || (currentZone?.privacy_level === "HIGH" && !privacyAttested) ? "disabled" : ""}`}>
           <b>Take required photo</b><span>The image will be linked to this report—not merely to the area.</span>
           <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
@@ -764,20 +885,38 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
               if (file) queuePhoto(file, question.observation_id);
               event.target.value = "";
             }} />
-        </label> : <>
+        </label> : question.response_type === "PHOTO_RECOMMENDED" ? <div className="fi-photo-recommendation">
+          <div><b>AI recommends a supporting photo</b><span>You decide: strengthen the evidence now, or continue with detailed text at lower confidence.</span></div>
+          <label className={`fi-requested-photo ${budgetGate || (currentZone?.privacy_level === "HIGH" && !privacyAttested) ? "disabled" : ""}`}>
+            <b>Add recommended photo</b><span>It will be linked directly to this report.</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+              disabled={Boolean(budgetGate) || (currentZone?.privacy_level === "HIGH" && !privacyAttested)}
+              onChange={event => {
+                const file = event.target.files?.[0];
+                if (file) queuePhoto(file, question.observation_id);
+                event.target.value = "";
+              }} />
+          </label>
+            <button type="button" disabled={questionBusy === question.id}
+            onClick={() => answerQuestion(
+              question.id,
+              "Consultant chose to continue without a photo; detailed text will be reviewed at lower confidence.",
+            )}>{questionBusy === question.id ? "Assessing…" : "Continue without photo"}</button>
+        </div> : <>
           <div className="fi-chip-row">{question.options.map((option: string) => {
             const needsDetail = hasUnresolvedPlaceholder(option);
             return <button key={option} disabled={questionBusy === question.id}
               onClick={() => needsDetail
                 ? setAnswers(previous => ({ ...previous, [question.id]: option }))
                 : answerQuestion(question.id, option)}>
-              {option}{needsDetail ? " · complete details" : ""}
+              {questionBusy === question.id ? "Assessing…" : <>{option}{needsDetail ? " · complete details" : ""}</>}
             </button>;
           })}</div>
           <div className="fi-answer-row"><input aria-label="Answer in your own words" placeholder="Or answer in your own words"
             value={answers[question.id] ?? ""} onChange={event => setAnswers({ ...answers, [question.id]: event.target.value })} />
             <button className="fi-primary" disabled={questionBusy === question.id || !(answers[question.id] ?? "").trim() || hasUnresolvedPlaceholder(answers[question.id] ?? "")}
-              onClick={() => answerQuestion(question.id, answers[question.id] ?? "")}>Answer</button></div>
+              onClick={() => answerQuestion(question.id, answers[question.id] ?? "")}>
+              {questionBusy === question.id ? "Assessing…" : "Answer"}</button></div>
           {hasUnresolvedPlaceholder(answers[question.id] ?? "") && <small className="fi-placeholder-warning">Replace the bracketed placeholders with what you actually observed.</small>}
         </>}
         <button className="fi-later" onClick={() => setDeferredQuestionIds(ids => [...new Set([...ids, question.id])])}>Answer later</button>
@@ -793,10 +932,23 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
       {zoneFindings.map((finding: any) => <article key={finding.id}>
         <div className="fi-draft-top"><span className={`fi-risk fi-risk-${String(finding.severity).toLowerCase()}`}>PRODUCT PRIORITY {finding.severity}</span>
           <span>{finding.standard?.code ? `${finding.standard.code} · ${finding.standard.authority_badge ?? "representative guide"}` : "No standard linked"}</span></div>
+        <div className={`fi-evidence-strength ${finding.evidence?.some((item: any) =>
+          ["PHOTO", "VIDEO"].includes(item?.source_type)) ? "media" : "text"}`}>
+          <b>{finding.evidence?.some((item: any) => ["PHOTO", "VIDEO"].includes(item?.source_type))
+            ? "Linked media attached" : "Text-only evidence · lower confidence"}</b>
+          <span>AI confidence {Math.round(Math.min(
+            Number(finding.confidence ?? 0),
+            finding.evidence?.some((item: any) => ["PHOTO", "VIDEO"].includes(item?.source_type)) ? 1 : 0.70,
+          ) * 100)}% · independent reviewer decides</span>
+        </div>
         <h2>{finding.title}</h2>
         <blockquote>“{finding.consultant_statement_display ?? finding.consultant_statement}”</blockquote>
         <p>{finding.model_interpretation}</p>
         <div className="fi-draft-limit"><b>Still unproven</b><span>{(finding.not_supported ?? []).join("; ")}</span></div>
+        {(finding.uncertainty_reasons ?? []).length > 0 && <details className="fi-finding-uncertainty">
+          <summary>Why confidence is limited</summary>
+          <ul>{finding.uncertainty_reasons.map((reason: string) => <li key={reason}>{reason}</li>)}</ul>
+        </details>}
         {finding.ticket && <details className="fi-ticket-receipt" open>
           <summary>Saved and routed for validation · {finding.ticket.id}</summary>
           <p>Photo attached. Routed to <b>{finding.ticket.assigned_role}</b>; due {finding.ticket.due_date}.</p>
@@ -828,6 +980,11 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
           response.zone_id === zoneId && response.standard_code === check.standard_code);
         const conflict = savedResponse?.reconciliation_conflict;
         const answer = checks[check.id];
+        const photoPolicy = check.photo_policy ?? {
+          level: "RECOMMENDED",
+          label: "AI recommends a photo",
+          reason: "A photo would strengthen this report but is not compulsory.",
+        };
         const needsApplicabilityDetail = answer?.response === "NOT_APPLICABLE" ||
           (answer?.response === "PASS" && String(check.authority_type ?? "").includes("CONDITIONAL"));
         return <article className={`fi-check ${answer?.response === "FAIL" ? "issue" : ""}`} key={check.id}>
@@ -840,15 +997,18 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
           </details>}
           {conflict && !answer && <div className="fi-check-conflict" role="alert">
             <b>Your earlier {String(savedResponse.response).replace("FAIL", "Issue")} was preserved.</b>
-            <span>A later photo-linked report suggests Issue: {conflict.reported_detail}</span>
+            <span>A later field report suggests Issue{(conflict.evidence_observation_ids ?? []).length
+              ? " and includes explicitly linked evidence" : " from consultant-reported text"}: {conflict.reported_detail}</span>
             <small>Choose Pass, Issue or N/A below to resolve this conflict. Nothing was overwritten automatically.</small>
           </div>}
           {saved && !answer ? <div className="fi-saved-check">✓ {savedResponse?.auto_reconciled
-            ? "Linked from your field report · photo attached · reviewer confirmation required"
+            ? savedResponse?.verification_state === "PHOTO_ATTACHED_PENDING_REVIEW"
+              ? "Linked from your field report · photo attached · reviewer confirmation required"
+              : "Linked from your field report · text evidence · reviewer confirmation required"
             : `Recorded for this visit · ${String(savedResponse?.response ?? "").replace("FAIL", "Issue")}`}</div> : <>
             <div className="fi-check-actions" role="group" aria-label={`${check.standard_code} result`}>
-              <button className={answer?.response === "PASS" ? "selected pass" : ""} onClick={() => setCheck(check.id, "PASS")}>Pass</button>
-              <button className={answer?.response === "FAIL" ? "selected issue" : ""} onClick={() => {
+              <button aria-pressed={answer?.response === "PASS"} className={answer?.response === "PASS" ? "selected pass" : ""} onClick={() => setCheck(check.id, "PASS")}>Pass</button>
+              <button aria-pressed={answer?.response === "FAIL"} className={answer?.response === "FAIL" ? "selected issue" : ""} onClick={() => {
                 if (conflict) {
                   setChecks(previous => ({ ...previous, [check.id]: {
                     response: "FAIL", detail: conflict.reported_detail ?? "",
@@ -858,14 +1018,20 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
                   ] }));
                 } else setCheck(check.id, "FAIL");
               }}>Issue</button>
-              <button className={answer?.response === "NOT_APPLICABLE" ? "selected" : ""} onClick={() => setCheck(check.id, "NOT_APPLICABLE")}>N/A</button>
+              <button aria-pressed={answer?.response === "NOT_APPLICABLE"} className={answer?.response === "NOT_APPLICABLE" ? "selected" : ""} onClick={() => setCheck(check.id, "NOT_APPLICABLE")}>N/A</button>
             </div>
             {answer?.response === "FAIL" && <div className="fi-issue-detail">
               <label>What exactly did you observe?<input value={answer.detail} onChange={event => setChecks(previous => ({
                 ...previous, [check.id]: { ...answer, detail: event.target.value },
               }))} placeholder="Specific condition, precise location and time" /></label>
+              <div className={`fi-photo-policy ${String(photoPolicy.level).toLowerCase()}`}>
+                <b>{photoPolicy.label}</b><span>{photoPolicy.reason}</span>
+              </div>
               <label className={`fi-requested-photo ${budgetGate || (currentZone?.privacy_level === "HIGH" && !privacyAttested) ? "disabled" : ""}`}>
-                <b>Take issue photo</b><span>Required before this Issue can be saved.</span>
+                <b>{photoPolicy.level === "REQUIRED" ? "Take required photo" : "Add recommended photo"}</b>
+                <span>{photoPolicy.level === "REQUIRED"
+                  ? "This Issue cannot be saved without it."
+                  : "Attach it now, or explicitly continue without one."}</span>
                 <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
                   disabled={Boolean(budgetGate) || (currentZone?.privacy_level === "HIGH" && !privacyAttested)}
                   onChange={event => {
@@ -878,7 +1044,21 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
                 {zonePhotos.map((observation: any) => <label key={observation.id}><input type="checkbox"
                   checked={(evidenceLinks[check.id] ?? []).includes(observation.id)} onChange={() => toggleEvidence(check.id, observation.id)} />
                   Photo · {observation.text.slice(0, 80)}</label>)}</fieldset>
-                : <small>No photo is linked yet. The Issue cannot be saved.</small>}
+                : <small>No photo is linked yet.</small>}
+              {photoPolicy.level === "RECOMMENDED" && !(evidenceLinks[check.id] ?? []).length && <button
+                type="button"
+                className={answer.photoDecision === "CONTINUE_WITHOUT_PHOTO" ? "fi-photo-skip selected" : "fi-photo-skip"}
+                onClick={() => setChecks(previous => ({
+                  ...previous,
+                  [check.id]: {
+                    ...answer,
+                    photoDecision: "CONTINUE_WITHOUT_PHOTO",
+                  },
+                }))}>
+                {answer.photoDecision === "CONTINUE_WITHOUT_PHOTO"
+                  ? "✓ Continuing without photo · lower confidence"
+                  : "Continue without photo"}
+              </button>}
             </div>}
             {needsApplicabilityDetail && <div className="fi-issue-detail">
               <label>{answer?.response === "NOT_APPLICABLE" ? "Why does this not apply here?" : "What record or condition did you verify?"}
@@ -886,6 +1066,7 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
                   ...previous, [check.id]: { ...answer, detail: event.target.value },
                 }))} placeholder={answer?.response === "NOT_APPLICABLE" ? "State the site condition or service scope" : "Example: current credential and application record viewed"} />
               </label>
+              <small className="fi-validation-hint">Required: record a specific site condition, scope or document you actually checked.</small>
             </div>}
           </>}
         </article>;
@@ -943,11 +1124,27 @@ export default function Audit({ ctx, goto }: { ctx: Ctx; goto: (screen: string) 
 
     <details className="fi-visit-options">
       <summary>Visit options</summary>
-      {!confirmNew ? <button onClick={() => setConfirmNew(true)}>Start a separate walkthrough</button> : <div>
-        <p>This visit remains saved in the audit trail. A fresh walkthrough will become your active visit.</p>
-        <button onClick={() => setConfirmNew(false)}>Keep this visit</button>
-        <button className="fi-primary" disabled={starting} onClick={start}>{starting ? "Preparing…" : "Create fresh walkthrough"}</button>
-      </div>}
+      <button type="button" onClick={() => setConfirmNew(true)}>Start a new visit</button>
+      {visits.filter((visit: any) => visit.id !== ctx.auditId).slice(0, 5).map((visit: any) =>
+        <div className="fi-visit-option-row" key={visit.id}>
+          <button type="button" onClick={() => ctx.setAuditId(visit.id)}>
+            Open {new Date(visit.created_at).toLocaleDateString()} · {String(visit.status).split("_").join(" ")}
+          </button>
+          {visit.can_discard && (discardConfirmId !== visit.id
+            ? <button type="button" className="fi-discard-link" onClick={() => setDiscardConfirmId(visit.id)}>Discard draft</button>
+            : <div className="fi-discard-confirm"><span>Remove this unfinished visit?</span>
+              <button type="button" onClick={() => setDiscardConfirmId("")}>Keep</button>
+              <button type="button" disabled={visitBusy === visit.id} onClick={() => discardVisit(visit.id)}>Yes, discard</button>
+            </div>)}
+        </div>)}
+      {visits.find((visit: any) => visit.id === ctx.auditId)?.can_discard &&
+        (discardConfirmId !== ctx.auditId
+          ? <button type="button" className="fi-discard-link" onClick={() => setDiscardConfirmId(ctx.auditId!)}>Discard current draft</button>
+          : <div className="fi-discard-confirm"><span>Discard this current unfinished visit and its evidence?</span>
+            <button type="button" onClick={() => setDiscardConfirmId("")}>Keep</button>
+            <button type="button" disabled={visitBusy === ctx.auditId} onClick={() => discardVisit(ctx.auditId!)}>Yes, discard draft</button>
+          </div>)}
+      <small>Submitted review packets are retained as immutable audit records.</small>
     </details>
 
     <details className="fi-evaluator">

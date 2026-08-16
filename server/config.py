@@ -44,7 +44,7 @@ def _materialise_sa() -> str | None:
     return str(path)
 
 
-GEMINI_VERTEX_SA_PATH = _materialise_sa()
+GEMINI_VERTEX_SA_PATH = _materialise_sa() if LLM_PROVIDER == "gemini" else None
 GEMINI_CONFIGURED = bool(GEMINI_API_KEY or (GEMINI_VERTEX_PROJECT and GEMINI_VERTEX_SA_PATH))
 
 # Optional latency tuning: gemini-2.5-flash "thinks" by default (~8s avg observed).
@@ -73,11 +73,22 @@ ENABLE_SCRAPED_SIGNALS = _bool("ENABLE_SCRAPED_SIGNALS", False)
 
 APP_ENV = os.getenv("APP_ENV", "development")
 APP_DEMO_MODE = _bool("APP_DEMO_MODE", True)
+DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo-user").strip()
+DEMO_PASSWORD = os.getenv(
+    "DEMO_PASSWORD",
+    "Broadpeak-demo-user" if APP_ENV != "production" else "",
+)
+SESSION_SECRET = os.getenv(
+    "SESSION_SECRET",
+    "local-fieldintel-session-secret-change-me" if APP_ENV != "production" else "",
+)
+SESSION_HOURS = int(os.getenv("SESSION_HOURS", "12"))
 CORS_ORIGINS = (["*"] if APP_ENV != "production" else
                 [origin.strip() for origin in os.getenv("CORS_ORIGINS", "").split(",")
                  if origin.strip()])
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{ROOT / 'var' / 'fieldintel.db'}")
 MAX_LLM_CALLS_PER_AUDIT = int(os.getenv("MAX_LLM_CALLS_PER_AUDIT", "25"))
+MAX_LLM_CALLS_PER_HOUR = int(os.getenv("MAX_LLM_CALLS_PER_HOUR", "500"))
 LLM_BUDGET_EXTENSION_CALLS = int(os.getenv("LLM_BUDGET_EXTENSION_CALLS", "15"))
 MAX_LLM_BUDGET_ACKNOWLEDGEMENTS = int(os.getenv("MAX_LLM_BUDGET_ACKNOWLEDGEMENTS", "2"))
 
@@ -90,6 +101,22 @@ VAR_DIR.mkdir(exist_ok=True)
 # reviewer opens is provably the one the description was generated from.
 UPLOADS_DIR = VAR_DIR / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
+
+
+def validate_runtime() -> None:
+    """Fail closed when a public deployment omits its access-control secrets."""
+    if APP_ENV == "production":
+        missing = [name for name, value in {
+            "DEMO_PASSWORD": DEMO_PASSWORD,
+            "SESSION_SECRET": SESSION_SECRET,
+        }.items() if not value]
+        if missing:
+            raise RuntimeError(
+                "production requires protected Render environment values: "
+                + ", ".join(missing)
+            )
+        if len(SESSION_SECRET) < 32:
+            raise RuntimeError("SESSION_SECRET must contain at least 32 characters")
 
 
 def key_status() -> dict:

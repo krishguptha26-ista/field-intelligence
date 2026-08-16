@@ -11,7 +11,10 @@ The primary in-the-moment user is the field consultant. The mobile-first Field
 Companion guides them area by area while they speak, type, take a photo, record a
 short video, or answer structured checks. Voice is transcribed but cannot enter
 analysis until the consultant confirms it; photo/video models can describe
-observable facts but their schemas cannot return a violation. The agent then
+observable facts but their schemas cannot return a violation. Visually
+verifiable or high-risk issues require a photo targeted to that exact report;
+other issues get an AI recommendation and may continue with detailed text at
+lower confidence. The agent then
 investigates through tenant-scoped, read-only tools and makes a schema-validated
 decision. Ambiguous input such as “the restroom floor looked a little dirty”
 becomes a targeted question, never a finding. Specific input can become a
@@ -30,11 +33,12 @@ verification; review, edits, disputes and verification are append-only events.
 
 The implementation is a modular monolith: FastAPI, SQLAlchemy, React/Vite and one
 model gateway supporting Gemini or a labelled deterministic fixture engine.
-SQLite keeps the POC portable; `DATABASE_URL` switches the same domain model to
-Postgres. Prompts are versioned files and every model call records provider,
+Single-worker SQLite keeps the POC portable; Postgres and object storage remain
+an explicit production migration. Prompts are versioned files and every model call records provider,
 model, tokens, latency, estimated cost, retries and success. A second EV/depot
 tenant runs through the same engine with separate standards, demonstrating the
-multi-tenant boundary without claiming production authentication.
+multi-tenant data boundary. A signed shared demo login protects the public POC
+without claiming production user-level authentication or RBAC.
 
 ## Results
 
@@ -71,18 +75,21 @@ and supported opportunities in practice-facility visibility and value messaging.
 The UI labels the manually selected cohort directional, not representative market
 research.
 
-Validation is deliberately harder than a happy-path demo. Fourteen API/domain
-regression tests pass, including forged provenance, arbitrary standard codes,
-unconfirmed voice, high-privacy media, self-review and evidence-free closure.
+Validation is deliberately harder than a happy-path demo. Fifty-one API/domain
+regression tests pass, including authentication, forged provenance, cross-issue
+photo reuse, concurrent checklist saves, atomic model budgets, unconfirmed voice,
+high-privacy media, self-review and evidence-free closure.
 The deterministic behavioural suite ran each executable
-case three times: 14/14 passed, zero flaky, with model-only cases explicitly
+case three times: 15/15 executable cases passed, zero flaky, with one live-vision-only case explicitly
 skipped rather than counted green; the zero-unsupported-finding release gate
 cleared over a non-empty finding set. Separately, live Gemini passed the text
 injection case once and the vision injection case three consecutive times. The
 production bundle type-checks, `npm audit` reports zero vulnerabilities, the
-Docker image builds, and a no-secret production container passed health, review,
-benchmark and destructive-reset protection smoke checks. Desktop and 390px mobile
-browser validation found no console errors or horizontal overflow. Live Gemini
+Docker image builds, and a credential-protected production container passed
+health, anonymous-denial, secure-session and static-bundle smoke checks. Desktop
+and 390px mobile browser validation found no console errors or horizontal overflow.
+Live Gemini rejected a deliberately unrelated checklist photo instead of linking
+it as proof, while the text-only path visibly capped confidence. Live Gemini
 also transcribed a real WAV, described a real MP4 with time-coded facts, refused
 to store that people-filled clip in a high-privacy restroom, and downgraded a
 candidate finding after two of three independent challenge lenses weakened it.
@@ -92,13 +99,15 @@ candidate finding after two of three independent challenge lenses weakened it.
 BroadPeak supplied no controlled internal standards, credentials or private data.
 Wolf Creek uses a sourced, jurisdiction-labelled external guide (law, conditional
 requirements, industry BMP and venue policy remain distinct); representative
-operating prompts and the EV tenant remain labelled. There is no authentication; the role
-selector says “demo persona.” Google Business Profile publishing is a draft-only
+operating prompts and the EV tenant remain labelled. The shared demo credential
+uses an HttpOnly signed session, but role selection still says “demo persona” and
+does not provide real separation of duty. Google Business Profile publishing is a draft-only
 integration boundary. Live scraping is not a production dependency. Image files
 are content-validated locally, but production still needs identity, object
 storage, malware scanning, retention/deletion policy and legal review.
 
-First 30 days: load one redacted standards set, add SSO/RBAC and authorized
+First 30 days: load one redacted standards set, replace the shared credential
+with SSO/RBAC, and add authorized
 Business Profile access, and agree the photo/privacy policy. Days 30–60: run one
 property in shadow mode and measure audit time, clarification rate, unsupported
 findings, successful disputes and challenge-panel value. Days 60–90: if those

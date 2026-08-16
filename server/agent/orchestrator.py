@@ -10,8 +10,9 @@ from datetime import datetime, timedelta, timezone
 
 from .. import config
 from ..budget import ModelBudgetExceeded, audit_budget
-from ..field_guide import ZONE_CHECK_CODES
-from ..gateway import get_provider
+from ..field_guide import ZONE_CHECK_CODES, issue_photo_policy
+from ..gateway import clear_provider_execution, get_provider, provider_execution
+from ..locks import audit_lock
 from ..models import (Action, AuditLog, AuditSession, ClarificationQuestion,
                       EvidenceItem, Finding, ModelCall, Observation,
                       OperationalTicket, SessionLocal, Standard, Zone, uid)
@@ -24,6 +25,11 @@ VAGUE_BLOCKLIST = ("a little", "kinda", "kind of", "somewhat", "seemed", "maybe"
 
 MAX_TOOL_STEPS = 6
 MAX_TEXT_CLARIFICATIONS = 2
+PHOTO_WORKFLOW_PREFIXES = (
+    "PHOTO_REQUIRED:",
+    "PHOTO_RECOMMENDED:",
+    "UNMAPPED_PHOTO_REQUIRED:",
+)
 
 _SEVERITY_LADDER = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
@@ -253,9 +259,18 @@ def _reconcile_checklist_from_finding(db, audit: AuditSession, finding: Finding,
         "detail": finding.consultant_statement,
         "zone_id": zone.id,
         "evidence_observation_ids": [photo.id for photo in photo_observations],
+        "photo_decision": (
+            "ATTACHED" if photo_observations else "CONTINUE_WITHOUT_PHOTO"),
+        "photo_policy": issue_photo_policy(
+            standard.code,
+            category=standard.category,
+            severity=finding.severity,
+        ),
         "source_label": standard.source_label,
         "standard_metadata": standard_metadata(standard.code),
-        "verification_state": "PHOTO_ATTACHED_PENDING_REVIEW",
+        "verification_state": (
+            "PHOTO_ATTACHED_PENDING_REVIEW" if photo_observations else
+            "CONSULTANT_REPORTED_PHOTO_RECOMMENDED"),
         "auto_reconciled": True,
         "review_required": True,
         "finding_id": finding.id,
@@ -453,13 +468,56 @@ def _escalate(severity: str) -> str:
     return _SEVERITY_LADDER[min(i + 1, len(_SEVERITY_LADDER) - 1)]
 
 
+def _analysis_state_digest(db, audit: AuditSession) -> str:
+    """Fingerprint only state that can change the analysis outcome."""
+    observations = db.query(Observation).filter_by(audit_id=audit.id).order_by(
+        Observation.id).all()
+    questions = db.query(ClarificationQuestion).filter_by(audit_id=audit.id).order_by(
+        ClarificationQuestion.id).all()
+    findings = db.query(Finding).filter_by(audit_id=audit.id).order_by(Finding.id).all()
+    state = {
+        "checklist": audit.checklist_responses or {},
+        "observations": [
+            [row.id, row.kind, row.zone_id, row.text, row.payload or {}]
+            for row in observations
+        ],
+        "questions": [
+            [row.id, row.observation_id, row.question, row.answer, row.status]
+            for row in questions
+        ],
+        "findings": [[row.id, row.status] for row in findings],
+    }
+    encoded = json.dumps(state, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
 def analyze_audit(audit_id: str) -> dict:
+    with audit_lock(audit_id):
+        return _analyze_audit_unlocked(audit_id)
+
+
+def _analyze_audit_unlocked(audit_id: str) -> dict:
     """Run the full analysis pass over an audit's observations."""
+    clear_provider_execution(audit_id)
     db = SessionLocal()
     audit = db.get(AuditSession, audit_id)
     if audit is None:
         db.close()
         raise ValueError("audit not found")
+
+    current_digest = _analysis_state_digest(db, audit)
+    previous = (db.query(AuditLog).filter_by(
+        entity_type="audit", entity_id=audit_id,
+        event="ANALYSIS_STATE_COMPLETED").order_by(AuditLog.created_at.desc()).first())
+    if previous is not None and (previous.detail or {}).get("state_digest") == current_digest:
+        status = audit.status
+        db.close()
+        return {
+            "summary": "No evidence or clarification changed since the last completed analysis.",
+            "findings": [], "clarifications": [], "no_issue": [], "demoted": [],
+            "tool_calls": 0, "investigation_stopped": "IDEMPOTENT_NO_CHANGE",
+            "idempotent": True, "audit_status": status,
+        }
 
     # Budget actual model invocations, not analysis-button presses. A single
     # analysis can invoke investigation, decision, and three challenge lenses.
@@ -534,13 +592,13 @@ def analyze_audit(audit_id: str) -> dict:
              "clarification_answer": "\n".join(
                  row.answer for row in question_history.get(o.id, [])
                  if row.answer and not row.why_needed.startswith(
-                     ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:"))
+                     PHOTO_WORKFLOW_PREFIXES)
              ) or None,
              "clarification_history": [
                  {"question": row.question, "answer": row.answer}
                  for row in question_history.get(o.id, [])
                  if row.answer and not row.why_needed.startswith(
-                     ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:"))
+                     PHOTO_WORKFLOW_PREFIXES)
              ]}
             for o in observations],
         "standard_categories": sorted({s.category for s in standards}),
@@ -579,6 +637,7 @@ def analyze_audit(audit_id: str) -> dict:
     result: AnalysisResult = provider.generate(
         purpose="audit_analysis", prompt=prompt, schema=AnalysisResult,
         tenant_id=audit.tenant_id, audit_id=audit_id)
+    execution = provider_execution(audit_id)
 
     std_by_code = {s.code: s for s in standards}
     valid_codes = set(std_by_code)
@@ -602,7 +661,7 @@ def analyze_audit(audit_id: str) -> dict:
         # thrown away for being vague.
         answered_rows = [row for row in question_history.get(ob.id, [])
                          if row.answer and not row.why_needed.startswith(
-                             ("PHOTO_REQUIRED:", "UNMAPPED_PHOTO_REQUIRED:"))]
+                             PHOTO_WORKFLOW_PREFIXES)]
         answered = "\n".join(row.answer for row in answered_rows)
         evidence_text = f"{ob.text}\n{answered}".strip() if answered else ob.text
         if _security_reference_ambiguous(evidence_text):
@@ -640,8 +699,8 @@ def analyze_audit(audit_id: str) -> dict:
                         "What additional observable detail would settle this assessment?")
             prior_rows = question_history.get(ob.id, [])
             prior_text_rows = [row for row in prior_rows
-                               if not row.why_needed.startswith(("PHOTO_REQUIRED:",
-                                                                "UNMAPPED_PHOTO_REQUIRED:"))]
+                               if not row.why_needed.startswith(
+                                   PHOTO_WORKFLOW_PREFIXES)]
             repeated = any(_questions_overlap(proposed, row.question) for row in prior_text_rows)
             if existing_open:
                 pass  # never create more than one open question for an observation
@@ -674,6 +733,11 @@ def analyze_audit(audit_id: str) -> dict:
         elif d.decision == "CANDIDATE_FINDING" and d.finding:
             f = d.finding
             std = std_by_code.get(f.standard_code)
+            photo_policy = issue_photo_policy(
+                f.standard_code,
+                category=(std.category if std else f.category),
+                severity=f.severity,
+            )
             explicitly_linked_photo_ids = set(
                 (ob.payload or {}).get("evidence_observation_ids") or [])
             supporting_photos = ([ob] if ob.kind == "PHOTO_DESCRIPTION" else []) + [
@@ -684,25 +748,52 @@ def analyze_audit(audit_id: str) -> dict:
             ]
             supporting_photos = list({photo.id: photo for photo in supporting_photos}.values())
             if not supporting_photos:
-                pending_photo = next((row for row in question_history.get(ob.id, [])
-                                      if row.status == "OPEN" and
-                                      row.why_needed.startswith("PHOTO_REQUIRED:")), None)
-                if pending_photo is None:
-                    q = ClarificationQuestion(
-                        id=uid("q"), tenant_id=audit.tenant_id, audit_id=audit_id,
-                        observation_id=ob.id,
-                        question="Take one clear photo that shows this reported issue.",
-                        why_needed=("PHOTO_REQUIRED: A photo is required before an issue can "
-                                    "be prepared, reconciled to the guide and routed. The photo "
-                                    "supports the report; it does not itself prove a violation."),
-                        options=[],
-                    )
-                    db.add(q)
-                    question_history.setdefault(ob.id, []).append(q)
-                    open_qs[ob.id] = q
-                    created["clarifications"].append(q.id)
-                    created.setdefault("evidence_requests", []).append(ob.id)
-                continue
+                prior_photo_choice = any(
+                    row.answer and row.why_needed.startswith("PHOTO_RECOMMENDED:")
+                    for row in question_history.get(ob.id, [])
+                ) or (ob.payload or {}).get("photo_decision") == "CONTINUE_WITHOUT_PHOTO"
+                if photo_policy["level"] == "REQUIRED":
+                    pending_photo = next((row for row in question_history.get(ob.id, [])
+                                          if row.status == "OPEN" and
+                                          row.why_needed.startswith("PHOTO_REQUIRED:")), None)
+                    if pending_photo is None:
+                        q = ClarificationQuestion(
+                            id=uid("q"), tenant_id=audit.tenant_id, audit_id=audit_id,
+                            observation_id=ob.id,
+                            question="Take one clear photo that shows this reported issue.",
+                            why_needed=("PHOTO_REQUIRED: " + photo_policy["reason"] + " The "
+                                        "photo supports the report; it does not itself prove "
+                                        "a violation."),
+                            options=[],
+                        )
+                        db.add(q)
+                        question_history.setdefault(ob.id, []).append(q)
+                        open_qs[ob.id] = q
+                        created["clarifications"].append(q.id)
+                        created.setdefault("evidence_requests", []).append(ob.id)
+                    continue
+                if not prior_photo_choice:
+                    pending_recommendation = next((
+                        row for row in question_history.get(ob.id, [])
+                        if row.status == "OPEN" and
+                        row.why_needed.startswith("PHOTO_RECOMMENDED:")
+                    ), None)
+                    if pending_recommendation is None:
+                        q = ClarificationQuestion(
+                            id=uid("q"), tenant_id=audit.tenant_id, audit_id=audit_id,
+                            observation_id=ob.id,
+                            question=("AI recommends one supporting photo for this report. "
+                                      "Would you like to attach it or continue with your "
+                                      "detailed text at lower confidence?"),
+                            why_needed=("PHOTO_RECOMMENDED: " + photo_policy["reason"]),
+                            options=[],
+                        )
+                        db.add(q)
+                        question_history.setdefault(ob.id, []).append(q)
+                        open_qs[ob.id] = q
+                        created["clarifications"].append(q.id)
+                        created.setdefault("evidence_recommendations", []).append(ob.id)
+                    continue
 
             existing_incident = _existing_incident_finding(
                 db, audit, std, supporting_photos)
@@ -825,7 +916,20 @@ def analyze_audit(audit_id: str) -> dict:
                     {"observation_id": ob.id, "rule": "customer_signal_non_causal_language"})
             recurrence = _detect_recurrence(db, audit, ob, category)
             severity = f.severity
+            confidence = f.confidence
             uncertainty = list(f.uncertainty_reasons) + challenge_notes + authority_notes
+            if execution["degraded"]:
+                uncertainty.append(
+                    "Gemini was unavailable during this analysis; a labelled deterministic "
+                    "fixture fallback prepared the candidate. Human review must treat the AI "
+                    "interpretation as degraded."
+                )
+            if not supporting_photos:
+                uncertainty.append(
+                    "No supporting photo was attached. The consultant chose to continue "
+                    "with detailed text; human review must account for the lower evidence confidence."
+                )
+                confidence = min(confidence, 0.70)
             if recurrence.get("closed_and_verified"):
                 severity = _escalate(severity)
                 uncertainty.append(
@@ -870,10 +974,12 @@ def analyze_audit(audit_id: str) -> dict:
                     ]) if consultant_answers else ob.text
                 ),
                 model_interpretation=f.model_interpretation,
-                severity=severity, confidence=f.confidence,
+                severity=severity, confidence=confidence,
                 uncertainty_reasons=uncertainty,
                 not_supported=f.not_supported,
                 reasoning_trace=(
+                    ([{"step": 0, "tool": "provider_execution", "actor": "SYSTEM",
+                       "result": execution}] if execution["degraded"] else []) +
                     ([standard_snapshot] if standard_snapshot else []) +
                     (relevant_trace or inv["trace"])
                 ),
@@ -888,10 +994,12 @@ def analyze_audit(audit_id: str) -> dict:
             db.add(finding)
             checklist_reconciled = _reconcile_checklist_from_finding(
                 db, audit, finding, std, ob, supporting_photos)
-            ticket = _create_field_ticket(
+            ticket = (_create_field_ticket(
                 db, audit, finding, ob, supporting_photos)
+                if supporting_photos else None)
             created["findings"].append(finding.id)
-            created.setdefault("tickets", []).append(ticket.id)
+            if ticket is not None:
+                created.setdefault("tickets", []).append(ticket.id)
             if checklist_reconciled:
                 created.setdefault("checklist_reconciled", []).append({
                     "finding_id": finding.id, "standard_code": std.code,
@@ -933,7 +1041,13 @@ def analyze_audit(audit_id: str) -> dict:
                             "retrieved_standards": sorted(ctx.retrieved_standard_codes)}))
     db.add(AuditLog(id=uid("log"), tenant_id=audit.tenant_id, actor="MODEL",
                     entity_type="audit", entity_id=audit_id, event="ANALYZE",
-                    detail={"summary": result.overall_summary, **{k: v for k, v in created.items()}}))
+                     detail={"summary": result.overall_summary, **{k: v for k, v in created.items()}}))
+    final_digest = _analysis_state_digest(db, audit)
+    db.add(AuditLog(id=uid("log"), tenant_id=audit.tenant_id, actor="SYSTEM",
+                    entity_type="audit", entity_id=audit_id,
+                    event="ANALYSIS_STATE_COMPLETED",
+                    detail={"state_digest": final_digest,
+                            "provider_execution": execution}))
     db.commit()
     db.close()
     return {"summary": result.overall_summary, **created, "audit_status": audit.status}
@@ -1151,6 +1265,15 @@ def challenge_existing_finding(finding_id: str, reviewer: str) -> dict:
 
 
 def answer_clarification(question_id: str, answer: str) -> dict:
+    db = SessionLocal()
+    question = db.get(ClarificationQuestion, question_id)
+    audit_id = question.audit_id if question is not None else None
+    db.close()
+    with audit_lock(audit_id):
+        return _answer_clarification_unlocked(question_id, answer)
+
+
+def _answer_clarification_unlocked(question_id: str, answer: str) -> dict:
     db = SessionLocal()
     q = db.get(ClarificationQuestion, question_id)
     if q is None:

@@ -26,6 +26,10 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  session: () => j<any>("/api/auth/session"),
+  login: (username: string, password: string) =>
+    j<any>("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+  logout: () => j<any>("/api/auth/logout", { method: "POST" }),
   health: () => j<any>("/api/health"),
   simulated: () => j<any>("/api/simulated"),
   tenants: () => j<any[]>("/api/tenants"),
@@ -36,6 +40,13 @@ export const api = {
   benchmark: (loc: string) => j<any>(`/api/locations/${loc}/benchmark`),
   createAudit: (tenant_id: string, location_id: string, consultant_name: string) =>
     j<any>("/api/audits", { method: "POST", body: JSON.stringify({ tenant_id, location_id, consultant_name }) }),
+  audits: (tenant_id: string, location_id: string) =>
+    j<any[]>(`/api/audits?tenant_id=${encodeURIComponent(tenant_id)}&location_id=${encodeURIComponent(location_id)}`),
+  discardAudit: (id: string, requested_by: string) =>
+    j<any>(`/api/audits/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm_audit_id: id, requested_by }),
+    }),
   getAudit: (id: string) => j<any>(`/api/audits/${id}`),
   addObservation: (id: string, kind: string, text: string, zone_id?: string | null) =>
     j<any>(`/api/audits/${id}/observations`, { method: "POST", body: JSON.stringify({ kind, text, zone_id }) }),

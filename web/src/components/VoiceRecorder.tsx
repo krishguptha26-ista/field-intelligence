@@ -31,6 +31,8 @@ export default function VoiceRecorder({ disabled, onRecorded }: {
   onRecorded: (file: File) => Promise<void>;
 }) {
   const [recording, setRecording] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState("");
   const recordingRef = useRef(false);
@@ -56,17 +58,29 @@ export default function VoiceRecorder({ disabled, onRecorded }: {
 
   const stop = async () => {
     if (!recordingRef.current) return;
+    setStopping(true);
     recordingRef.current = false;
     const blob = encodeWav(chunksRef.current, sampleRateRef.current);
     release(); setRecording(false);
-    if (blob.size < 1000) { setError("Recording was too short. Please try again."); return; }
-    await onRecorded(new File([blob], `field-note-${Date.now()}.wav`, { type: "audio/wav" }));
+    if (blob.size < 1000) {
+      setError("Recording was too short. Please try again.");
+      setStopping(false);
+      return;
+    }
+    try {
+      await onRecorded(new File([blob], `field-note-${Date.now()}.wav`, { type: "audio/wav" }));
+    } finally {
+      setStopping(false);
+    }
   };
 
   const start = async () => {
+    if (starting || stopping || recordingRef.current) return;
+    setStarting(true);
     setError("");
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("Microphone capture is unavailable here. Upload a WAV or MP3 instead.");
+      setStarting(false);
       return;
     }
     try {
@@ -82,11 +96,11 @@ export default function VoiceRecorder({ disabled, onRecorded }: {
       streamRef.current = stream; contextRef.current = context;
       sourceRef.current = source; processorRef.current = processor;
       sampleRateRef.current = context.sampleRate;
-      setSeconds(0); recordingRef.current = true; setRecording(true);
+      setSeconds(0); recordingRef.current = true; setRecording(true); setStarting(false);
       tickerRef.current = window.setInterval(() => setSeconds(s => s + 1), 1000);
       limitRef.current = window.setTimeout(() => { void stop(); }, 30_000);
     } catch {
-      recordingRef.current = false; release(); setRecording(false);
+      recordingRef.current = false; release(); setRecording(false); setStarting(false);
       setError("Microphone permission was not granted. You can still upload a voice file.");
     }
   };
@@ -96,9 +110,11 @@ export default function VoiceRecorder({ disabled, onRecorded }: {
   return (
     <div>
       <button className={recording ? "capture-action recording" : "capture-action"}
-              disabled={disabled} onClick={() => recording ? void stop() : void start()}>
+              disabled={disabled || starting || stopping} aria-pressed={recording}
+              onClick={() => recording ? void stop() : void start()}>
         <span aria-hidden="true">{recording ? "■" : "●"}</span>
-        {recording ? `Stop recording · ${seconds}s` : "Record voice note"}
+        {starting ? "Connecting microphone…" : stopping ? "Saving recording…" :
+          recording ? `Stop recording · ${seconds}s` : "Record voice note"}
       </button>
       <div className="notice" style={{ marginTop: 8 }}>
         Maximum 30 seconds. You review the transcript before it is treated as a consultant statement.

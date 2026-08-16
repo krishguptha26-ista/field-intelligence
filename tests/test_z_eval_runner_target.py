@@ -57,6 +57,10 @@ class _Client:
         self.urls.append(url)
         return _Response(self.health)
 
+    def post(self, url: str, **_kwargs) -> _Response:
+        self.urls.append(url)
+        return _Response({"authenticated": True, "username": "demo-user"})
+
 
 class EvaluationTargetTests(unittest.TestCase):
     def test_api_url_is_explicit_and_rejects_ambiguous_targets(self) -> None:

@@ -51,6 +51,14 @@ equipment fault, spill or other requested condition. A vacant, identifiable
 staffed post may relate to a reported absence, but it still does not prove the
 schedule, duration or cause; put those limits in `declined_to_assert`.
 
+Always set `matches_requested_context`. When an Evidence request exists, it is
+true only when visible content is materially related to that exact request. Set
+it false for a different issue in the same room or zone and explain the mismatch
+in `mismatch_reason`. When no issue request exists, compare the scene with the
+named zone: set it false only when the image clearly shows another area or an
+unrelated document/screen. If the zone cannot be identified, keep it true and
+record that uncertainty under `declined_to_assert`.
+
 ## People
 
 Set `people_visible: true` if any person appears, even partially or in
