@@ -13,6 +13,7 @@ os.environ["LLM_PROVIDER"] = "fixture"
 os.environ["GEMINI_API_KEY"] = ""
 
 from server.evals import runner
+from server.build_meta import _runtime_files
 
 
 BUILD = runner.source_fingerprint()
@@ -63,6 +64,11 @@ class _Client:
 
 
 class EvaluationTargetTests(unittest.TestCase):
+    def test_build_identity_covers_persistence_and_configuration(self) -> None:
+        runtime_files = set(_runtime_files())
+        self.assertIn("server/blob_store.py", runtime_files)
+        self.assertIn("server/config.py", runtime_files)
+
     def test_api_url_is_explicit_and_rejects_ambiguous_targets(self) -> None:
         self.assertEqual(
             runner._normalise_api_url("http://127.0.0.1:8001"),
